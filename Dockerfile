@@ -1,4 +1,4 @@
-FROM golang:1.8.5-jessie as builder
+FROM golang:1.11 as builder
 
 EXPOSE 4000
 
