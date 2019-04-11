@@ -34,7 +34,7 @@ RUN strip --strip-unneeded main
 RUN upx main
 
 # use a minimal alpine image
-FROM alpine:3.7
+FROM alpine:latest
 
 # set working directory
 WORKDIR /root
