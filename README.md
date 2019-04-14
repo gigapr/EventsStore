@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/gigapr/EventsStore.svg?branch=master)](https://travis-ci.com/gigapr/EventsStore)
+
 Events Store
 
 Prerequisites
@@ -21,10 +23,11 @@ Events can be Posted to `/event`
 
 ```
 {
-	"type": "userCreated",
-	"data": "{ name: 'Gaetano', surname: 'Santonastaso' }",
-	"sourceId": "sourceId"
+  "type": "userCreated",
+  "data": "{ name: 'Gaetano', surname: 'Santonastaso' }",
+  "sourceId": "sourceId"
 }
 ```
 
-To receive new events notifications subscribe via WebSocket to /subscribe
+To receive new events notifications subscribe via WebSocket to `/subscribe`
+
