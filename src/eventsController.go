@@ -25,28 +25,29 @@ func (ec EventsController) RegisterRoutes() {
 	http.HandleFunc("/event", ec.saveEventHandler)
 }
 
+// https://flaviocopes.com/golang-event-listeners/
+
+//subscribe?to=eventType
 func (ec EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 	c, err := ec.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Print("upgrade:", err)
+		message := "unable to upgrades the HTTP server connection to the WebSocket protocol"
+		http.Error(w, message, http.StatusBadRequest)
+		log.Print(message, err)
 		return
 	}
 	defer c.Close()
 
 	for {
 		msg := <-ec.Handler
-		err = c.WriteMessage(websocket.TextMessage, []byte(msg))
+		err = c.WriteMessage(websocket.TextMessage, msg)
 		if err != nil {
-			log.Println("write:", err)
+			message := "Unable to write messagge to the websocket"
+			log.Println(message, err)
+			http.Error(w, message, http.StatusBadRequest)
 			break
 		}
 	}
-}
-
-func (ec EventsController) emit(response []byte) {
-	go func(handler chan []byte) {
-		handler <- response
-	}(ec.Handler)
 }
 
 func (ec EventsController) saveEventHandler(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +70,7 @@ func (ec EventsController) saveEventHandler(w http.ResponseWriter, r *http.Reque
 
 	ec.EventsStore.Save(evm.SourceId, evm.Type, json)
 
-	ec.emit(json)
+	ec.dispatchToSubscribers(json)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -77,4 +78,10 @@ func (ec EventsController) saveEventHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (ec EventsController) dispatchToSubscribers(response []byte) {
+	go func(handler chan []byte) {
+		handler <- response
+	}(ec.Handler)
 }
