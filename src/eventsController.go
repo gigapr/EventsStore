@@ -2,7 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+
+	"github.com/gorilla/websocket"
 )
 
 type EventViewModel struct {
@@ -12,12 +15,38 @@ type EventViewModel struct {
 }
 
 type EventsController struct {
-	EventsStore    *EventsStore
-	EventPublisher *EventPublisher
+	EventsStore *EventsStore
+	Upgrader    websocket.Upgrader
+	Handler     chan []byte
 }
 
 func (c EventsController) RegisterRoutes() {
+	http.HandleFunc("/subscribe", c.subscribe)
 	http.HandleFunc("/event", c.saveEventHandler)
+}
+
+func (ec EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
+	c, err := ec.Upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Print("upgrade:", err)
+		return
+	}
+	defer c.Close()
+
+	for {
+		msg := <-ec.Handler
+		err = c.WriteMessage(websocket.TextMessage, []byte(msg))
+		if err != nil {
+			log.Println("write:", err)
+			break
+		}
+	}
+}
+
+func (ec EventsController) emit(response []byte) {
+	go func(handler chan []byte) {
+		handler <- response
+	}(ec.Handler)
 }
 
 func (ec EventsController) saveEventHandler(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +68,8 @@ func (ec EventsController) saveEventHandler(w http.ResponseWriter, r *http.Reque
 	json, err := json.Marshal(evm.Data)
 
 	ec.EventsStore.Save(evm.SourceId, evm.Type, json)
-	ec.EventPublisher.Publish(evm.SourceId, evm.Type, json)
+
+	ec.emit(json)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
