@@ -17,7 +17,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var addr = flag.String("addr", "localhost:4001", "http service address")
+var addr = flag.String("addr", "localhost:4000", "http service address")
 
 func main() {
 	flag.Parse()
