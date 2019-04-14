@@ -20,9 +20,9 @@ type EventsController struct {
 	Handler     chan []byte
 }
 
-func (c EventsController) RegisterRoutes() {
-	http.HandleFunc("/subscribe", c.subscribe)
-	http.HandleFunc("/event", c.saveEventHandler)
+func (ec EventsController) RegisterRoutes() {
+	http.HandleFunc("/subscribe", ec.subscribe)
+	http.HandleFunc("/event", ec.saveEventHandler)
 }
 
 func (ec EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
