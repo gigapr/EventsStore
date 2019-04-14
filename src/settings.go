@@ -5,14 +5,12 @@ import (
 )
 
 type Setting struct {
-	BrokerConnectionString string
-	Port                   string
+	Port string
 }
 
 func InitialiseSetting() *Setting {
 	settings := new(Setting)
 	settings.Port = "4000"
-	settings.BrokerConnectionString = getEnv("BROKER_CONNECTIONSTRING", "amqp://guest:guest@localhost:5672/")
 	return settings
 }
 
