@@ -12,6 +12,9 @@ make all
 make run
 ```
 
+or  `go run $(ls -1 *.go | grep -v _test.go)`
+
+
 To run the application within a Docker container 
 
 ```

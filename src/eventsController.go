@@ -15,20 +15,38 @@ type EventViewModel struct {
 }
 
 type EventsController struct {
-	EventsStore *EventsStore
-	Upgrader    websocket.Upgrader
-	Handler     chan []byte
+	EventsStore     *EventsStore
+	Upgrader        websocket.Upgrader
+	HandlersManager *HandlersManager
 }
 
-func (ec EventsController) RegisterRoutes() {
+func NewEventsController(eventStore *EventsStore, upgrader websocket.Upgrader, handlersManager *HandlersManager) *EventsController {
+
+	es := new(EventsController)
+	es.EventsStore = eventStore
+	es.Upgrader = upgrader
+	es.HandlersManager = handlersManager
+	es.RegisterRoutes()
+
+	return es
+}
+
+func (ec *EventsController) RegisterRoutes() {
 	http.HandleFunc("/subscribe", ec.subscribe)
 	http.HandleFunc("/event", ec.saveEventHandler)
 }
 
-// https://flaviocopes.com/golang-event-listeners/
+//subscribe?topic=eventType
+func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 
-//subscribe?to=eventType
-func (ec EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
+	topic := r.URL.Query().Get("topic")
+	if len(topic) == 0 {
+		message := "need to specify a topic when subscribing to events"
+		http.Error(w, message, http.StatusBadRequest)
+		log.Print(message)
+		return
+	}
+
 	c, err := ec.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		message := "unable to upgrades the HTTP server connection to the WebSocket protocol"
@@ -38,8 +56,11 @@ func (ec EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
+	channel := ec.HandlersManager.Get(topic)
+
 	for {
-		msg := <-ec.Handler
+		msg := <-channel
+
 		err = c.WriteMessage(websocket.TextMessage, msg)
 		if err != nil {
 			message := "Unable to write messagge to the websocket"
@@ -50,7 +71,7 @@ func (ec EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ec EventsController) saveEventHandler(w http.ResponseWriter, r *http.Request) {
+func (ec *EventsController) saveEventHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Body == nil {
 		http.Error(w, "Please send a request body", http.StatusBadRequest)
 		return
@@ -70,7 +91,7 @@ func (ec EventsController) saveEventHandler(w http.ResponseWriter, r *http.Reque
 
 	ec.EventsStore.Save(evm.SourceId, evm.Type, json)
 
-	ec.dispatchToSubscribers(json)
+	ec.dispatchToSubscribers(json, ec.HandlersManager.Get(evm.Type))
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -80,8 +101,9 @@ func (ec EventsController) saveEventHandler(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusOK)
 }
 
-func (ec EventsController) dispatchToSubscribers(response []byte) {
-	go func(handler chan []byte) {
-		handler <- response
-	}(ec.Handler)
+func (ec *EventsController) dispatchToSubscribers(response []byte, handler chan []byte) {
+	go func(h chan []byte) {
+		log.Println(h)
+		h <- response
+	}(handler)
 }

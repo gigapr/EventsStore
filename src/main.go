@@ -16,10 +16,11 @@ func main() {
 
 	settings := InitialiseSetting()
 
-	eventsController.EventsStore = NewEventsStore()
-	eventsController.Upgrader = websocket.Upgrader{} // use default options
-	eventsController.Handler = make(chan []byte)
-	eventsController.RegisterRoutes()
+	eventsStore := NewEventsStore()
+	handlersManager := NewHandlersManager()
+	upgrader := websocket.Upgrader{}
+
+	NewEventsController(eventsStore, upgrader, handlersManager)
 
 	http.Handle("/metrics", promhttp.Handler())
 
