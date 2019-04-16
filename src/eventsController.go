@@ -26,6 +26,7 @@ func NewEventsController(eventStore *EventsStore, upgrader websocket.Upgrader, h
 	es.EventsStore = eventStore
 	es.Upgrader = upgrader
 	es.HandlersManager = handlersManager
+
 	es.RegisterRoutes()
 
 	return es
@@ -56,7 +57,7 @@ func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
-	channel := ec.HandlersManager.Get(topic)
+	channel := ec.HandlersManager.Register(topic)
 
 	for {
 		msg := <-channel
@@ -91,7 +92,11 @@ func (ec *EventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 
 	ec.EventsStore.Save(evm.SourceId, evm.Type, json)
 
-	ec.dispatchToSubscribers(json, ec.HandlersManager.Get(evm.Type))
+	subscribers := ec.HandlersManager.Get(evm.Type)
+
+	if subscribers != nil {
+		ec.dispatchToSubscribers(json, subscribers)
+	}
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -101,9 +106,10 @@ func (ec *EventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusOK)
 }
 
-func (ec *EventsController) dispatchToSubscribers(response []byte, handler chan []byte) {
-	go func(h chan []byte) {
-		log.Println(h)
-		h <- response
-	}(handler)
+func (ec *EventsController) dispatchToSubscribers(response []byte, handlers []chan []byte) {
+	go func(h []chan []byte) {
+		for i := range h {
+			h[i] <- response
+		}
+	}(handlers)
 }
