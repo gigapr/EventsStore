@@ -26,7 +26,15 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	u := url.URL{Scheme: "ws", Host: *addr, Path: "/subscribe"}
+	u := url.URL{
+		Scheme: "ws",
+		Host:   *addr,
+		Path:   "/subscribe",
+	}
+	q := u.Query()
+	q.Set("topic", "type12313")
+	u.RawQuery = q.Encode()
+
 	log.Printf("connecting to %s", u.String())
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
