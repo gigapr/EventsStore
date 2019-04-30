@@ -1,9 +1,7 @@
-[![Build Status](https://travis-ci.com/gigapr/EventsStore.svg?branch=master)](https://travis-ci.com/gigapr/EventsStore)
+[![Build Status](https://travis-ci.com/gigapr/EventsStore.svg?branch=master)](https://travis-ci.com/gigapr/
+EventsStore)
 
-Events Store
-
-Prerequisites
-- Mongo DB `docker run -d -p 27017:27017 mongo`
+# Events Store
 
 To run the application execute
 
@@ -12,7 +10,10 @@ make all
 make run
 ```
 
-or  `go run $(ls -1 *.go | grep -v _test.go)`
+or  
+```
+go run $(ls -1 *.go | grep -v _test.go)
+```
 
 
 To run the application within a Docker container 
@@ -22,7 +23,7 @@ docker build -t eventstore .
 docker run -p 4000:4000 eventstore 
 ```
 
-Events can be Posted to `/event`
+Events can be Posted to `/subscribe?topic=eventType`
 
 ```
 {
