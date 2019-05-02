@@ -1,9 +1,3 @@
-// Copyright 2015 The Gorilla WebSocket Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-// +build ignore
-
 package main
 
 import (
@@ -18,8 +12,10 @@ import (
 )
 
 var addr = flag.String("addr", "localhost:4000", "http service address")
+var topic = flag.String("topic", "UserCreatedEvent", "topic to subscribe to")
 
 func main() {
+
 	flag.Parse()
 	log.SetFlags(0)
 
@@ -32,7 +28,7 @@ func main() {
 		Path:   "/subscribe",
 	}
 	q := u.Query()
-	q.Set("topic", "type12313")
+	q.Set("topic", *topic)
 	u.RawQuery = q.Encode()
 
 	log.Printf("connecting to %s", u.String())

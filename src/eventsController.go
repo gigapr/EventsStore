@@ -44,7 +44,6 @@ func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 	if len(topic) == 0 {
 		message := "need to specify a topic when subscribing to events"
 		http.Error(w, message, http.StatusBadRequest)
-		log.Print(message)
 		return
 	}
 
@@ -66,8 +65,9 @@ func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			message := "Unable to write messagge to the websocket"
 			log.Println(message, err)
+			log.Println("Unregistering broken channel")
+			go ec.HandlersManager.Unregister(topic, channel)
 			http.Error(w, message, http.StatusBadRequest)
-			break
 		}
 	}
 }
@@ -109,7 +109,8 @@ func (ec *EventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 func (ec *EventsController) dispatchToSubscribers(response []byte, handlers []chan []byte) {
 	go func(h []chan []byte) {
 		for i := range h {
-			h[i] <- response
+			channel := h[i]
+			channel <- response
 		}
 	}(handlers)
 }

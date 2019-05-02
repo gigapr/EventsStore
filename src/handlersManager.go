@@ -1,5 +1,7 @@
 package main
 
+import "log"
+
 type HandlersManager struct {
 	handlers map[string][]chan []byte
 }
@@ -11,9 +13,16 @@ func NewHandlersManager() *HandlersManager {
 	return es
 }
 
-// func (hm HandlersManager) Unregister(topic string) []chan []byte {
+func (hm HandlersManager) Unregister(topic string, channel chan []byte) {
 
-// }
+	for i, other := range hm.handlers[topic] {
+		if other == channel {
+			hm.handlers[topic] = append(hm.handlers[topic][:i], hm.handlers[topic][i+1:]...)
+			log.Println("Channel unregistered", channel)
+			break
+		}
+	}
+}
 
 func (hm HandlersManager) Register(topic string) chan []byte {
 	channel := make(chan []byte)
