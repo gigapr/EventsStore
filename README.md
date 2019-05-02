@@ -34,7 +34,7 @@ Events can be Posted to `/subscribe?topic=eventType`
 }
 ```
 
-To receive new events notifications subscribe via WebSocket to `/subscribe`
+To receive new events notifications subscribe via WebSocket to `/subscribe?topic=topicName`
 
 There is an example client in the client directory
 
