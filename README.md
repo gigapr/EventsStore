@@ -8,10 +8,10 @@ To run the application execute
 
 ```
 make all
-make run
+make run 
 ```
 
-or  
+or from the src directory
 ```
 go run $(ls -1 *.go | grep -v _test.go)
 ```
@@ -37,4 +37,9 @@ Events can be Posted to `/subscribe?topic=eventType`
 To receive new events notifications subscribe via WebSocket to `/subscribe`
 
 There is an example client in the client directory
+
+```
+go run client.go
+
+```
 
