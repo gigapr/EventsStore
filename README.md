@@ -28,7 +28,7 @@ Events can be Posted to `/subscribe?topic=eventType`
 
 ```
 {
-  "type": "userCreated",
+  "type": "topicName",
   "data": "{ name: 'Gaetano', surname: 'Santonastaso' }",
   "sourceId": "sourceId"
 }
