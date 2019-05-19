@@ -4,13 +4,19 @@ import (
 	"os"
 )
 
-type Setting struct {
+//Settings type that holds application setttings
+type Settings struct {
 	Port string
 }
 
-func InitialiseSetting() *Setting {
-	settings := new(Setting)
-	settings.Port = "4000"
+/*InitialiseSettings initialise a new Settings.
+  Configurations can be overridden via environment variables.
+  Available settings:
+  [ port ]
+*/
+func InitialiseSettings() *Settings {
+	settings := new(Settings)
+	settings.Port = getEnv("port", "4000")
 	return settings
 }
 

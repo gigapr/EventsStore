@@ -14,7 +14,7 @@ var (
 
 func main() {
 
-	settings := InitialiseSetting()
+	settings := InitialiseSettings()
 
 	eventsStore := NewEventsStore()
 	handlersManager := NewHandlersManager()
