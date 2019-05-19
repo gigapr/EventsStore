@@ -37,6 +37,8 @@ func (ec *EventsController) RegisterRoutes() {
 	http.HandleFunc("/event", ec.saveEventHandler)
 }
 
+// needs an endpoint to unsubescribe
+
 //subscribe?topic=eventType
 func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 
@@ -56,7 +58,7 @@ func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
-	channel := ec.HandlersManager.Register(topic)
+	channel := ec.HandlersManager.Subscribe(topic)
 
 	for {
 		msg := <-channel
@@ -65,8 +67,8 @@ func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			message := "Unable to write messagge to the websocket"
 			log.Println(message, err)
-			log.Println("Unregistering broken channel")
-			go ec.HandlersManager.Unregister(topic, channel)
+			log.Println("Unsubscribing broken channel")
+			go ec.HandlersManager.Unsubscribe(topic, channel)
 			http.Error(w, message, http.StatusBadRequest)
 		}
 	}
@@ -92,7 +94,7 @@ func (ec *EventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 
 	ec.EventsStore.Save(evm.SourceId, evm.Type, json)
 
-	subscribers := ec.HandlersManager.Get(evm.Type)
+	subscribers := ec.HandlersManager.GetChannels(evm.Type)
 
 	if subscribers != nil {
 		ec.dispatchToSubscribers(json, subscribers)

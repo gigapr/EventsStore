@@ -27,7 +27,7 @@ RUN ls .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main *.go
 
 # run tests
-RUN go test ./... -v
+RUN go test ./... -v -cover -coverprofile=c.out
 
 # strip and compress the binary
 RUN strip --strip-unneeded main
