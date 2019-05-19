@@ -8,3 +8,6 @@ update_configs:
   - package_manager: "go:dep"
     directory: "/client"
     update_schedule: "daily"
+  - package_manager: "docker"
+    directory: "/"
+    update_schedule: "live"
