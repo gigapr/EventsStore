@@ -12,6 +12,13 @@ To build the application execute from the root directory
 make all
 ```
 
+To execute the tests run 
+
+```
+make test
+```
+
+
 To run the application from the src directory run
 ```
 go run $(ls -1 *.go | grep -v _test.go)
