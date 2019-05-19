@@ -40,4 +40,8 @@ curl -X POST \
 
 To receive new events notifications subscribe via WebSocket to `/subscribe?topic=eventType`
 
-[Client example](./client/client.go)
+To run the [client example](./client/client.go) from the client directory run 
+
+```
+go run client.go
+```
