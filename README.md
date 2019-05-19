@@ -4,6 +4,8 @@
 
 # Events Store
 
+An experimental Events Store written in Golang that allows to subscribe to events of a particular topic using [WebSocket](https://en.wikipedia.org/wiki/WebSocket). 
+
 To build the application execute from the root directory
 
 ```
@@ -28,8 +30,6 @@ To POST Events
 ```
 curl -X POST \
   http://localhost:4000/event \
-  -H 'acc: application/json' \
-  -H 'cache-control: no-cache' \
   -H 'content-type: application/json' \
   -d '{
         "type": "userCreated",
