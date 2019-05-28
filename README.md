@@ -1,8 +1,4 @@
-[![Build Status](https://travis-ci.com/gigapr/EventsStore.svg?branch=master)](https://travis-ci.com/gigapr/EventsStore)
-
-[Docker hub](https://cloud.docker.com/u/threeamigos/repository/docker/threeamigos/eventstore)
-
-# Events Store
+# Events Store | [![Build Status](https://travis-ci.com/gigapr/EventsStore.svg?branch=master)](https://travis-ci.com/gigapr/EventsStore) | ![Docker Pulls](https://img.shields.io/docker/pulls/threeamigos/eventstore.svg)
 
 An experimental Events Store written in Golang that allows to subscribe to events of a particular topic using [WebSocket](https://en.wikipedia.org/wiki/WebSocket). 
 
@@ -30,7 +26,10 @@ To run the application within a Docker container
 ```
 docker build -t eventstore .
 docker run -p 4000:4000 eventstore 
+
 ```
+
+[Docker hub](https://cloud.docker.com/u/threeamigos/repository/docker/threeamigos/eventstore)
 
 To POST Events 
 
