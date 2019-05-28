@@ -37,8 +37,6 @@ func (ec *EventsController) RegisterRoutes() {
 	http.HandleFunc("/event", ec.saveEventHandler)
 }
 
-// needs an endpoint to unsubescribe
-
 //subscribe?topic=eventType
 func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 
