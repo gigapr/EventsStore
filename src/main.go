@@ -16,7 +16,7 @@ func main() {
 
 	settings := InitialiseSettings()
 
-	eventsStore := NewEventsStore()
+	eventsStore := NewEventsStore(settings.DatabaseHost, settings.DatabasePort, settings.DatabaseUsername, settings.DatabasePassword, settings.DatabaseName)
 	handlersManager := NewHandlersManager()
 	upgrader := websocket.Upgrader{}
 

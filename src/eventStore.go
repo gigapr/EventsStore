@@ -1,38 +1,53 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
 	"log"
-	"time"
+
+	_ "github.com/lib/pq"
 )
 
-type Event struct {
-	SourceId string
-	Type     string
-	Data     []byte
-	Received time.Time
-}
-
-var events = []Event{} //should store in DB
-
+//EventsStore is responsible for storing and retrieving events
 type EventsStore struct {
+	host         string
+	port         int
+	username     string
+	password     string
+	databaseName string
 }
 
-func NewEventsStore() *EventsStore {
+//NewEventsStore creates an instance of the EventsStore
+func NewEventsStore(host string, port int, username string, password string, databaseName string) *EventsStore {
 
-	es := new(EventsStore)
-
-	return es
-}
-
-func (er EventsStore) Save(sourceId string, eventType string, data []byte) {
-	event := Event{
-		SourceId: sourceId,
-		Type:     eventType,
-		Data:     data,
-		Received: time.Now().UTC(),
+	return &EventsStore{
+		host:         host,
+		port:         port,
+		username:     username,
+		password:     password,
+		databaseName: databaseName,
 	}
+}
 
-	events = append(events, event)
+//Save stores an event to the database
+func (es EventsStore) Save(sourceID string, eventType string, data []byte) {
 
-	log.Println("Event store contains elements:", len(events))
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		es.host, es.port, es.username, es.password, es.databaseName)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		log.Print(err)
+	}
+	defer db.Close()
+
+	sqlStatement := `INSERT INTO Events (SourceId, EventType, EventData)
+					 VALUES ($1, $2, $3)
+					 RETURNING id`
+	id := 0
+	err = db.QueryRow(sqlStatement, sourceID, eventType, data).Scan(&id)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("New record ID is:", id)
 }

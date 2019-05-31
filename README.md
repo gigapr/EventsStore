@@ -29,6 +29,7 @@ To run the application within a Docker container
 
 ```
 docker build -t eventstore .
+
 docker run -p 4000:4000 eventstore 
 
 ```
