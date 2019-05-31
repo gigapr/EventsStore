@@ -9,7 +9,7 @@ import (
 )
 
 type EventViewModel struct {
-	SourceId string      `json:"sourceId"`
+	SourceID string      `json:"sourceId"`
 	Type     string      `json:"type"`
 	Data     interface{} `json:"data"`
 }
@@ -90,7 +90,7 @@ func (ec *EventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 
 	json, err := json.Marshal(evm.Data)
 
-	ec.EventsStore.Save(evm.SourceId, evm.Type, json)
+	ec.EventsStore.Save(evm.SourceID, evm.Type, json)
 
 	subscribers := ec.HandlersManager.GetChannels(evm.Type)
 
