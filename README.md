@@ -25,7 +25,7 @@ go run $(ls -1 *.go | grep -v _test.go)
 ```
 
 
-To run the application within a Docker container 
+To run the application within a Docker container run
 
 ```
 docker build -t eventstore .
@@ -33,8 +33,6 @@ docker build -t eventstore .
 docker run -p 4000:4000 eventstore 
 
 ```
-
-[Docker hub](https://cloud.docker.com/u/threeamigos/repository/docker/threeamigos/eventstore)
 
 To POST Events 
 
@@ -56,3 +54,5 @@ To run the [client example](./client/client.go) from the client directory run
 ```
 go run client.go
 ```
+
+Pre built Docker image can be downloaded from Dockerhub at [eventsstore](https://cloud.docker.com/u/threeamigos/repository/docker/threeamigos/eventstore)
