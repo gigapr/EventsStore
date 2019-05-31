@@ -4,11 +4,7 @@ An experimental Events Store written in Golang that allows to subscribe to event
 
 ## Dependencies
 
-```
-- Postgres 
-
-docker run --rm -P --publish 127.0.0.1:5432:5432 --name eventsstore -e POSTGRES_USER=postgressuperuser -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_DB=eventsStore postgres 
-```
+- [Database](./storage/README.md)
 
 To build the application execute from the root directory
 
