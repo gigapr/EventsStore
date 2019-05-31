@@ -2,6 +2,10 @@
 
 An experimental Events Store written in Golang that allows to subscribe to events of a particular topic using [WebSocket](https://en.wikipedia.org/wiki/WebSocket). 
 
+## Dependencies
+
+- [Database](./storage/README.md)
+
 To build the application execute from the root directory
 
 ```
@@ -25,6 +29,7 @@ To run the application within a Docker container
 
 ```
 docker build -t eventstore .
+
 docker run -p 4000:4000 eventstore 
 
 ```
