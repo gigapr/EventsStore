@@ -52,3 +52,7 @@ func (hm HandlersManager) GetChannels(topic string) []chan []byte {
 	}
 	return nil
 }
+
+func (hm HandlersManager) GetAllChannels() map[string][]chan []byte {
+	return hm.handlers
+}

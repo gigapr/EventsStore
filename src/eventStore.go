@@ -30,7 +30,7 @@ func NewEventsStore(host string, port int, username string, password string, dat
 }
 
 //Save stores an event to the database
-func (es EventsStore) Save(sourceID string, eventType string, data []byte) {
+func (es EventsStore) Save(sourceID string, eventType string, data []byte) error {
 
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		es.host, es.port, es.username, es.password, es.databaseName)
@@ -47,7 +47,8 @@ func (es EventsStore) Save(sourceID string, eventType string, data []byte) {
 	id := 0
 	err = db.QueryRow(sqlStatement, sourceID, eventType, data).Scan(&id)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Println("New record ID is:", id)
+	return nil
 }

@@ -19,7 +19,7 @@ type Settings struct {
 /*InitialiseSettings initialise a new Settings.
   Configurations can be overridden via environment variables.
   Available settings:
-  [ port ]
+  [ port, databaseHost, databsePort, databaseUsername, databasePassword, databaseName ]
 */
 func InitialiseSettings() *Settings {
 	settings := new(Settings)
