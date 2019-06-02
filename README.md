@@ -4,7 +4,7 @@ An experimental Events Store written in Golang that allows to subscribe to event
 
 ## Dependencies
 
-- [Database](./storage/README.md)
+- [Events Database](./storage/README.md)
 
 To build the application execute from the root directory
 
