@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -41,7 +43,7 @@ func (hm HandlersManager) Unsubscribe(topic string, channel chan []byte) {
 			hm.log.Debug("Channel unregistered", channel)
 			if len(hm.handlers[topic]) == 0 {
 				delete(hm.handlers, topic)
-				hm.log.Debug("Removed handler for topic '%s'", topic)
+				hm.log.Debug(fmt.Sprintf("Removed handler for topic '%s'", topic))
 			}
 			break
 		}

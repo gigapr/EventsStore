@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
-	"github.com/sirupsen/logrus"
 )
 
 type eventViewModel struct {
@@ -27,9 +26,7 @@ func NewEventsController(eventStore *EventsStore, upgrader websocket.Upgrader, h
 	es.EventsStore = eventStore
 	es.Upgrader = upgrader
 	es.HandlersManager = handlersManager
-	es.log = &HTTPRequestLogger{
-		Logger: logrus.New(),
-	}
+	es.log = NewHTTPRequestLogger()
 
 	es.registerRoutes()
 

@@ -10,6 +10,11 @@ type HTTPRequestLogger struct {
 	*logrus.Logger
 }
 
+func NewHTTPRequestLogger() *HTTPRequestLogger {
+	return &HTTPRequestLogger{
+		Logger: logrus.New(),
+	}
+}
 func (rl *HTTPRequestLogger) Error(r *http.Request, message string, err error) {
 	rl.decorate(r, message).Error(err)
 }
