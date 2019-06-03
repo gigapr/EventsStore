@@ -15,7 +15,7 @@ type eventViewModel struct {
 }
 
 type EventsController struct {
-	log             *logrus.Logger
+	log             *HTTPRequestLogger
 	EventsStore     *EventsStore
 	Upgrader        websocket.Upgrader
 	HandlersManager *HandlersManager
@@ -27,7 +27,9 @@ func NewEventsController(eventStore *EventsStore, upgrader websocket.Upgrader, h
 	es.EventsStore = eventStore
 	es.Upgrader = upgrader
 	es.HandlersManager = handlersManager
-	es.log = logrus.New()
+	es.log = &HTTPRequestLogger{
+		Logger: logrus.New(),
+	}
 
 	es.registerRoutes()
 
@@ -52,13 +54,7 @@ func (ec *EventsController) getSubscibers(w http.ResponseWriter, r *http.Request
 	json, err := json.Marshal(info)
 
 	if err != nil {
-		log := ec.log.WithFields(logrus.Fields{
-			"http.req.path":   r.URL.Path,
-			"http.req.method": r.Method,
-		})
-
-		log.Error("Unable to serialise subscribers to json.", err)
-
+		ec.log.Error(r, "Unable to serialise subscribers to json.", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
@@ -70,11 +66,6 @@ func (ec *EventsController) getSubscibers(w http.ResponseWriter, r *http.Request
 
 //subscribe?topic=eventType
 func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
-	log := ec.log.WithFields(logrus.Fields{
-		"http.req.path":   r.URL.Path,
-		"http.req.method": r.Method,
-	})
-
 	topic := r.URL.Query().Get("topic")
 	if len(topic) == 0 {
 		message := "Need to specify a topic when subscribing to events."
@@ -85,9 +76,9 @@ func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 	c, err := ec.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		message := "Unable to upgrade the HTTP server connection to the WebSocket protocol."
-
-		log.Error(message, err)
+		ec.log.Error(r, message, err)
 		http.Error(w, message, http.StatusBadRequest)
+
 		return
 	}
 	defer c.Close()
@@ -100,7 +91,7 @@ func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 		err = c.WriteMessage(websocket.TextMessage, msg)
 		if err != nil {
 			message := "Unable to write message to the websocket."
-			log.Debugf("%s. Unsubscribing broken channel. %s", message, err)
+			ec.log.Debug(r, "Unsubscribing broken channel.", err)
 			go ec.HandlersManager.Unsubscribe(topic, channel)
 			http.Error(w, message, http.StatusBadRequest)
 		}
@@ -108,10 +99,6 @@ func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ec *EventsController) saveEventHandler(w http.ResponseWriter, r *http.Request) {
-	log := ec.log.WithFields(logrus.Fields{
-		"http.req.path":   r.URL.Path,
-		"http.req.method": r.Method,
-	})
 
 	if r.Body == nil {
 		http.Error(w, "Please send a request body.", http.StatusBadRequest)
@@ -130,8 +117,9 @@ func (ec *EventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 	json, err := json.Marshal(evm.Data)
 	if err != nil {
 		message := "Unable to encode event to JSON."
-		log.Error(message, err)
+		ec.log.Error(r, message, err)
 		http.Error(w, message, http.StatusInternalServerError)
+
 		return
 	}
 
@@ -139,8 +127,9 @@ func (ec *EventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 
 	if err != nil {
 		message := "Unable to persist event."
-		log.Error(message, err)
+		ec.log.Error(r, message, err)
 		http.Error(w, message, http.StatusInternalServerError)
+
 		return
 	}
 	subscribers := ec.HandlersManager.GetChannels(evm.Type)

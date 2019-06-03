@@ -40,7 +40,9 @@ func (es EventsStore) Save(sourceID string, eventType string, data []byte) error
 
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
-		es.log.Error("Unable to open connection to database.", err)
+		es.log.WithFields(logrus.Fields{
+			"message": "Unable to open connection to database.",
+		}).Error(err)
 	}
 	defer db.Close()
 
@@ -52,7 +54,6 @@ func (es EventsStore) Save(sourceID string, eventType string, data []byte) error
 	if err != nil {
 		return err
 	}
-	es.log.Debug("New record ID is:", id)
 
 	return nil
 }
