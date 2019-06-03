@@ -1,17 +1,20 @@
 package main
 
-import "log"
+import (
+	"github.com/sirupsen/logrus"
+)
 
 //HandlersManager is responsible for managing clients connections
 type HandlersManager struct {
+	log      *logrus.Logger
 	handlers map[string][]chan []byte
 }
 
 //NewHandlersManager inititalise a new HandlersManager
 func NewHandlersManager() *HandlersManager {
-
 	es := new(HandlersManager)
 	es.handlers = make(map[string][]chan []byte)
+	es.log = logrus.New()
 	return es
 }
 
@@ -35,10 +38,10 @@ func (hm HandlersManager) Unsubscribe(topic string, channel chan []byte) {
 	for i, other := range hm.handlers[topic] {
 		if other == channel {
 			hm.handlers[topic] = append(hm.handlers[topic][:i], hm.handlers[topic][i+1:]...)
-			log.Println("Channel unregistered", channel)
+			hm.log.Debug("Channel unregistered", channel)
 			if len(hm.handlers[topic]) == 0 {
 				delete(hm.handlers, topic)
-				log.Printf("Removed handler for topic '%s'", topic)
+				hm.log.Debug("Removed handler for topic '%s'", topic)
 			}
 			break
 		}
@@ -53,6 +56,7 @@ func (hm HandlersManager) GetChannels(topic string) []chan []byte {
 	return nil
 }
 
+//GetAllChannels returns all connected channels
 func (hm HandlersManager) GetAllChannels() map[string][]chan []byte {
 	return hm.handlers
 }

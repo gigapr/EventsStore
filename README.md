@@ -6,26 +6,26 @@ An experimental Events Store written in Golang that allows to subscribe to event
 
 - [Events Database](./storage/README.md)
 
-To build the application execute from the root directory
+To build the application execute from the root directory run:
 
 ```
 make all
 ```
 
-To execute the tests run 
+To execute the tests run:
 
 ```
 make test
 ```
 
 
-To run the application from the src directory run
+To run the application from the src directory run:
 ```
 go run $(ls -1 *.go | grep -v _test.go)
 ```
 
 
-To run the application within a Docker container run
+To run the application within a Docker container run:
 
 ```
 docker build -t eventstore .
@@ -34,7 +34,7 @@ docker run -p 4000:4000 eventstore
 
 ```
 
-To POST Events 
+To POST Events: 
 
 ```
 curl -X POST \
@@ -49,7 +49,7 @@ curl -X POST \
 
 To receive new events notifications subscribe via WebSocket to `/subscribe?topic=eventType`
 
-To run the [client example](./client/client.go) from the client directory run 
+To run the [client example](./client/client.go) from the client directory run: 
 
 ```
 go run client.go

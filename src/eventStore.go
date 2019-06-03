@@ -3,13 +3,15 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
+
+	"github.com/sirupsen/logrus"
 
 	_ "github.com/lib/pq"
 )
 
 //EventsStore is responsible for storing and retrieving events
 type EventsStore struct {
+	log          *logrus.Logger
 	host         string
 	port         int
 	username     string
@@ -26,6 +28,7 @@ func NewEventsStore(host string, port int, username string, password string, dat
 		username:     username,
 		password:     password,
 		databaseName: databaseName,
+		log:          logrus.New(),
 	}
 }
 
@@ -37,7 +40,7 @@ func (es EventsStore) Save(sourceID string, eventType string, data []byte) error
 
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
-		log.Print(err)
+		es.log.Error("Unable to open connection to database.", err)
 	}
 	defer db.Close()
 
@@ -49,6 +52,7 @@ func (es EventsStore) Save(sourceID string, eventType string, data []byte) error
 	if err != nil {
 		return err
 	}
-	fmt.Println("New record ID is:", id)
+	es.log.Debug("New record ID is:", id)
+
 	return nil
 }

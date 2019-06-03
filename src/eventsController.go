@@ -2,19 +2,20 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 )
 
-type EventViewModel struct {
+type eventViewModel struct {
 	SourceID string      `json:"sourceId"`
 	Type     string      `json:"type"`
 	Data     interface{} `json:"data"`
 }
 
 type EventsController struct {
+	log             *logrus.Logger
 	EventsStore     *EventsStore
 	Upgrader        websocket.Upgrader
 	HandlersManager *HandlersManager
@@ -26,16 +27,16 @@ func NewEventsController(eventStore *EventsStore, upgrader websocket.Upgrader, h
 	es.EventsStore = eventStore
 	es.Upgrader = upgrader
 	es.HandlersManager = handlersManager
+	es.log = logrus.New()
 
-	es.RegisterRoutes()
+	es.registerRoutes()
 
 	return es
 }
 
-func (ec *EventsController) RegisterRoutes() {
+func (ec *EventsController) registerRoutes() {
 	http.HandleFunc("/subscribe", ec.subscribe)
 	http.HandleFunc("/event", ec.saveEventHandler)
-
 	http.HandleFunc("/subscribers", ec.getSubscibers)
 }
 
@@ -51,7 +52,15 @@ func (ec *EventsController) getSubscibers(w http.ResponseWriter, r *http.Request
 	json, err := json.Marshal(info)
 
 	if err != nil {
+		log := ec.log.WithFields(logrus.Fields{
+			"http.req.path":   r.URL.Path,
+			"http.req.method": r.Method,
+		})
+
+		log.Error("Unable to serialise subscribers to json.", err)
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+
 		return
 	}
 
@@ -61,6 +70,10 @@ func (ec *EventsController) getSubscibers(w http.ResponseWriter, r *http.Request
 
 //subscribe?topic=eventType
 func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
+	log := ec.log.WithFields(logrus.Fields{
+		"http.req.path":   r.URL.Path,
+		"http.req.method": r.Method,
+	})
 
 	topic := r.URL.Query().Get("topic")
 	if len(topic) == 0 {
@@ -72,8 +85,9 @@ func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 	c, err := ec.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		message := "Unable to upgrade the HTTP server connection to the WebSocket protocol."
+
+		log.Error(message, err)
 		http.Error(w, message, http.StatusBadRequest)
-		log.Print(message, err)
 		return
 	}
 	defer c.Close()
@@ -86,8 +100,7 @@ func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 		err = c.WriteMessage(websocket.TextMessage, msg)
 		if err != nil {
 			message := "Unable to write message to the websocket."
-			log.Println(message, err)
-			log.Println("Unsubscribing broken channel.")
+			log.Debugf("%s. Unsubscribing broken channel. %s", message, err)
 			go ec.HandlersManager.Unsubscribe(topic, channel)
 			http.Error(w, message, http.StatusBadRequest)
 		}
@@ -95,44 +108,45 @@ func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ec *EventsController) saveEventHandler(w http.ResponseWriter, r *http.Request) {
+	log := ec.log.WithFields(logrus.Fields{
+		"http.req.path":   r.URL.Path,
+		"http.req.method": r.Method,
+	})
+
 	if r.Body == nil {
-		http.Error(w, "Please send a request body", http.StatusBadRequest)
+		http.Error(w, "Please send a request body.", http.StatusBadRequest)
 		return
 	}
 
-	var evm EventViewModel
+	var evm eventViewModel
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&evm)
 
 	if err != nil {
-		println(err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	json, err := json.Marshal(evm.Data)
 	if err != nil {
-		log.Printf("Unable to encode event to JSON. %s", err)
-		http.Error(w, "Unable to encode event to JSON.", http.StatusInternalServerError)
+		message := "Unable to encode event to JSON."
+		log.Error(message, err)
+		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
 
 	err = ec.EventsStore.Save(evm.SourceID, evm.Type, json)
 
 	if err != nil {
-		log.Printf("Unable to persist event. %s", err)
-		http.Error(w, "Unable to persist event.", http.StatusInternalServerError)
+		message := "Unable to persist event."
+		log.Error(message, err)
+		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
 	subscribers := ec.HandlersManager.GetChannels(evm.Type)
 
 	if subscribers != nil {
 		ec.dispatchToSubscribers(json, subscribers)
-	}
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 
 	w.WriteHeader(http.StatusOK)

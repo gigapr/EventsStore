@@ -1,18 +1,28 @@
 package main
 
 import (
-	"log"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-)
-
-var (
-	eventsController EventsController
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
+
+	log := logrus.New()
+	log.Level = logrus.DebugLevel
+	log.Formatter = &logrus.JSONFormatter{
+		FieldMap: logrus.FieldMap{
+			logrus.FieldKeyTime:  "timestamp",
+			logrus.FieldKeyLevel: "severity",
+			logrus.FieldKeyMsg:   "message",
+		},
+		TimestampFormat: time.RFC3339Nano,
+	}
+	log.Out = os.Stdout
 
 	settings := InitialiseSettings()
 
