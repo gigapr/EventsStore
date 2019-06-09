@@ -12,7 +12,7 @@ import (
 )
 
 var addr = flag.String("addr", "localhost:4000", "http service address")
-var topic = flag.String("topic", "UserCreatedEvent", "topic to subscribe to")
+var topic = flag.String("topic", "userCreated", "topic to subscribe to")
 
 func main() {
 
