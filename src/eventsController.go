@@ -8,94 +8,31 @@ import (
 )
 
 type eventViewModel struct {
+	Sequence int         `json:"sequence"`
 	SourceID string      `json:"sourceId"`
+	EventID  string      `json:"eventId"`
 	Type     string      `json:"type"`
 	Data     interface{} `json:"data"`
+	Metadata interface{} `json:"metadata"`
 }
 
-type EventsController struct {
+type eventsController struct {
 	log             *HTTPRequestLogger
 	EventsStore     *EventsStore
-	Upgrader        websocket.Upgrader
 	HandlersManager *HandlersManager
 }
 
-func NewEventsController(eventStore *EventsStore, upgrader websocket.Upgrader, handlersManager *HandlersManager) *EventsController {
+func RegisterEventsControllerRoutes(eventStore *EventsStore, upgrader websocket.Upgrader, handlersManager *HandlersManager) {
 
-	es := new(EventsController)
+	es := new(eventsController)
 	es.EventsStore = eventStore
-	es.Upgrader = upgrader
 	es.HandlersManager = handlersManager
 	es.log = NewHTTPRequestLogger()
 
-	es.registerRoutes()
-
-	return es
+	http.HandleFunc("/event", es.saveEventHandler)
 }
 
-func (ec *EventsController) registerRoutes() {
-	http.HandleFunc("/subscribe", ec.subscribe)
-	http.HandleFunc("/event", ec.saveEventHandler)
-	http.HandleFunc("/subscribers", ec.getSubscibers)
-}
-
-func (ec *EventsController) getSubscibers(w http.ResponseWriter, r *http.Request) {
-	subscribers := ec.HandlersManager.GetAllChannels()
-
-	info := make(map[string]int)
-
-	for k, v := range subscribers {
-		info[k] = len(v)
-	}
-
-	json, err := json.Marshal(info)
-
-	if err != nil {
-		ec.log.Error(r, "Unable to serialise subscribers to json.", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(json)
-}
-
-//subscribe?topic=eventType
-func (ec *EventsController) subscribe(w http.ResponseWriter, r *http.Request) {
-	topic := r.URL.Query().Get("topic")
-	if len(topic) == 0 {
-		message := "Need to specify a topic when subscribing to events."
-		http.Error(w, message, http.StatusBadRequest)
-		return
-	}
-
-	c, err := ec.Upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		message := "Unable to upgrade the HTTP server connection to the WebSocket protocol."
-		ec.log.Error(r, message, err)
-		http.Error(w, message, http.StatusBadRequest)
-
-		return
-	}
-	defer c.Close()
-
-	channel := ec.HandlersManager.Subscribe(topic)
-
-	for {
-		msg := <-channel
-
-		err = c.WriteMessage(websocket.TextMessage, msg)
-		if err != nil {
-			message := "Unable to write message to the websocket."
-			ec.log.Debug(r, "Unsubscribing broken channel.", err)
-			go ec.HandlersManager.Unsubscribe(topic, channel)
-			http.Error(w, message, http.StatusBadRequest)
-		}
-	}
-}
-
-func (ec *EventsController) saveEventHandler(w http.ResponseWriter, r *http.Request) {
+func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Body == nil {
 		http.Error(w, "Please send a request body.", http.StatusBadRequest)
@@ -111,16 +48,25 @@ func (ec *EventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	json, err := json.Marshal(evm.Data)
+	eventDataJSON, err := json.Marshal(evm.Data)
 	if err != nil {
-		message := "Unable to encode event to JSON."
+		message := "Unable to encode event data to JSON."
 		ec.log.Error(r, message, err)
 		http.Error(w, message, http.StatusInternalServerError)
 
 		return
 	}
 
-	err = ec.EventsStore.Save(evm.SourceID, evm.Type, json)
+	eventMetadataJSON, err := json.Marshal(evm.Data)
+	if err != nil {
+		message := "Unable to encode event metadata to JSON."
+		ec.log.Error(r, message, err)
+		http.Error(w, message, http.StatusInternalServerError)
+
+		return
+	}
+
+	id, err := ec.EventsStore.Save(evm.SourceID, evm.EventID, evm.Type, eventDataJSON, eventMetadataJSON)
 
 	if err != nil {
 		message := "Unable to persist event."
@@ -129,16 +75,28 @@ func (ec *EventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 
 		return
 	}
+
 	subscribers := ec.HandlersManager.GetChannels(evm.Type)
 
 	if subscribers != nil {
-		ec.dispatchToSubscribers(json, subscribers)
+		evm.Sequence = id
+
+		event, err := json.Marshal(evm)
+		if err != nil {
+			message := "Unable to encode event to JSON for subscribers."
+			ec.log.Error(r, message, err)
+			http.Error(w, message, http.StatusInternalServerError)
+
+			return
+		}
+
+		ec.dispatchToSubscribers(event, subscribers)
 	}
 
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 }
 
-func (ec *EventsController) dispatchToSubscribers(response []byte, handlers []chan []byte) {
+func (ec *eventsController) dispatchToSubscribers(response []byte, handlers []chan []byte) {
 	go func(h []chan []byte) {
 		for i := range h {
 			channel := h[i]

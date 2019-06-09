@@ -33,7 +33,7 @@ func NewEventsStore(host string, port int, username string, password string, dat
 }
 
 //Save stores an event to the database
-func (es EventsStore) Save(sourceID string, eventType string, data []byte) error {
+func (es EventsStore) Save(sourceID string, EventID string, eventType string, data []byte, metadata []byte) (int, error) {
 
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		es.host, es.port, es.username, es.password, es.databaseName)
@@ -46,14 +46,14 @@ func (es EventsStore) Save(sourceID string, eventType string, data []byte) error
 	}
 	defer db.Close()
 
-	sqlStatement := `INSERT INTO Events (SourceId, EventType, EventData)
-					 VALUES ($1, $2, $3)
+	sqlStatement := `INSERT INTO Events (SourceId, EventId, EventType, EventData, Metadata)
+					 VALUES 			($1, 	   $2, 		$3, 	   $4, 		  $5)
 					 RETURNING id`
 	id := 0
-	err = db.QueryRow(sqlStatement, sourceID, eventType, data).Scan(&id)
+	err = db.QueryRow(sqlStatement, sourceID, EventID, eventType, data, metadata).Scan(&id)
 	if err != nil {
-		return err
+		return -1, err
 	}
 
-	return nil
+	return id, nil
 }

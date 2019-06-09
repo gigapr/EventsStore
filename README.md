@@ -43,7 +43,9 @@ curl -X POST \
   -d '{
         "type": "userCreated",
         "data": "{ name: 'Gaetano', surname: 'Santonastaso' }",
-        "sourceId": "sourceId"
+        "sourceId": "sourceId",
+        "eventID": "eventId",
+        "metadata": "{ key: 'value' }"
       }'
 ```
 
