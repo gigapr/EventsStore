@@ -53,11 +53,11 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	eventDataJSON, err := json.Marshal(evm.Data)
+
 	if err != nil {
 		message := "Unable to encode event data to JSON."
 		ec.log.Error(r, message, err)
 		http.Error(w, message, http.StatusInternalServerError)
-
 		return
 	}
 
@@ -67,6 +67,21 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 		ec.log.Error(r, message, err)
 		http.Error(w, message, http.StatusInternalServerError)
 
+		return
+	}
+
+	alreadyExist, err := ec.EventsStore.Exists(evm.SourceID, evm.EventID)
+
+	if err != nil {
+		message := "Unable to persist event."
+		ec.log.Error(r, message, err)
+		http.Error(w, message, http.StatusInternalServerError)
+
+		return
+	}
+
+	if alreadyExist {
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 

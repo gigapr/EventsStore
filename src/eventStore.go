@@ -57,3 +57,34 @@ func (es EventsStore) Save(sourceID string, EventID string, eventType string, da
 
 	return id, nil
 }
+
+func (es EventsStore) Exists(sourceID string, EventID string) (bool, error) {
+
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		es.host, es.port, es.username, es.password, es.databaseName)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		es.log.WithFields(logrus.Fields{
+			"message": "Unable to open connection to database.",
+		}).Error(err)
+	}
+	defer db.Close()
+
+	sqlStatement := `SELECT * FROM Events 
+					 WHERE SourceId = $1 AND EventId = $2
+					 fetch first 1 rows only`
+
+	rows, err := db.Query(sqlStatement, sourceID, EventID)
+	defer rows.Close()
+
+	if err != nil {
+		return true, err
+	}
+
+	for rows.Next() {
+		return true, nil
+	}
+
+	return false, nil
+}
