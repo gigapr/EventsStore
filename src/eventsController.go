@@ -7,13 +7,17 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type eventViewModel struct {
-	Sequence int         `json:"sequence"`
+type event struct {
 	SourceID string      `json:"sourceId"`
 	EventID  string      `json:"eventId"`
 	Type     string      `json:"type"`
 	Data     interface{} `json:"data"`
 	Metadata interface{} `json:"metadata"`
+}
+
+type savedEvent struct {
+	Sequence int `json:"sequence"`
+	event
 }
 
 type eventsController struct {
@@ -39,7 +43,7 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var evm eventViewModel
+	var evm event
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&evm)
 
@@ -49,11 +53,11 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	eventDataJSON, err := json.Marshal(evm.Data)
+
 	if err != nil {
 		message := "Unable to encode event data to JSON."
 		ec.log.Error(r, message, err)
 		http.Error(w, message, http.StatusInternalServerError)
-
 		return
 	}
 
@@ -63,6 +67,21 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 		ec.log.Error(r, message, err)
 		http.Error(w, message, http.StatusInternalServerError)
 
+		return
+	}
+
+	alreadyExist, err := ec.EventsStore.Exists(evm.SourceID, evm.EventID)
+
+	if err != nil {
+		message := "Unable to persist event."
+		ec.log.Error(r, message, err)
+		http.Error(w, message, http.StatusInternalServerError)
+
+		return
+	}
+
+	if alreadyExist {
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
@@ -79,9 +98,10 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 	subscribers := ec.HandlersManager.GetChannels(evm.Type)
 
 	if subscribers != nil {
-		evm.Sequence = id
+		savedEvent := savedEvent{event: evm}
+		savedEvent.Sequence = id
 
-		event, err := json.Marshal(evm)
+		event, err := json.Marshal(savedEvent)
 		if err != nil {
 			message := "Unable to encode event to JSON for subscribers."
 			ec.log.Error(r, message, err)

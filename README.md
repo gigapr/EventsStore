@@ -4,7 +4,7 @@ An experimental Events Store written in Golang that allows to subscribe to event
 
 ## Dependencies
 
-- [Events Database](./storage/README.md)
+- [Events Database](./persistence/README.md)
 
 To build the application execute from the root directory run:
 
@@ -44,7 +44,7 @@ curl -X POST \
         "type": "userCreated",
         "data": "{ name: 'Gaetano', surname: 'Santonastaso' }",
         "sourceId": "sourceId",
-        "eventID": "eventId",
+        "eventId": "eventId",
         "metadata": "{ key: 'value' }"
       }'
 ```
