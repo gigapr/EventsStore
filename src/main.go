@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -29,8 +30,10 @@ func main() {
 	handlersManager := NewHandlersManager()
 	upgrader := websocket.Upgrader{}
 
-	RegisterEventsControllerRoutes(eventsStore, upgrader, handlersManager)
-	RegisterSubscribersControllerRoutes(eventsStore, upgrader, handlersManager)
+	router := mux.NewRouter()
+
+	RegisterEventsControllerRoutes(router, eventsStore, upgrader, handlersManager)
+	RegisterSubscribersControllerRoutes(router, eventsStore, upgrader, handlersManager)
 
 	http.Handle("/metrics", promhttp.Handler())
 
@@ -38,5 +41,5 @@ func main() {
 
 	log.Println("Server is ready to handle requests at", listenAddr)
 
-	log.Fatal(http.ListenAndServe(listenAddr, nil))
+	log.Fatal(http.ListenAndServe(listenAddr, router))
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
 
@@ -13,15 +14,15 @@ type subscribersController struct {
 	HandlersManager *HandlersManager
 }
 
-func RegisterSubscribersControllerRoutes(eventStore *EventsStore, upgrader websocket.Upgrader, handlersManager *HandlersManager) {
+func RegisterSubscribersControllerRoutes(router *mux.Router, eventStore *EventsStore, upgrader websocket.Upgrader, handlersManager *HandlersManager) {
 
 	sc := new(subscribersController)
 	sc.Upgrader = upgrader
 	sc.HandlersManager = handlersManager
 	sc.log = NewHTTPRequestLogger()
 
-	http.HandleFunc("/subscribe", sc.subscribe)
-	http.HandleFunc("/subscribers", sc.getSubscibers)
+	router.HandleFunc("/subscribe", sc.subscribe)
+	router.HandleFunc("/subscribers", sc.getSubscibers)
 }
 
 func (sc *subscribersController) getSubscibers(w http.ResponseWriter, r *http.Request) {

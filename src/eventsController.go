@@ -2,8 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
 
@@ -14,20 +17,33 @@ type eventsController struct {
 }
 
 //RegisterEventsControllerRoutes register all the EventsController routes
-func RegisterEventsControllerRoutes(eventStore *EventsStore, upgrader websocket.Upgrader, handlersManager *HandlersManager) {
+func RegisterEventsControllerRoutes(router *mux.Router, eventStore *EventsStore, upgrader websocket.Upgrader, handlersManager *HandlersManager) {
 
 	es := new(eventsController)
 	es.EventsStore = eventStore
 	es.HandlersManager = handlersManager
 	es.log = NewHTTPRequestLogger()
 
-	http.HandleFunc("/event", es.saveEventHandler)
-	http.HandleFunc("/events", es.getEventsHandler)
+	router.HandleFunc("/event", es.saveEventHandler)
+	router.HandleFunc("/events/{startFrom}", es.getEventsHandler)
 }
 
 //events?
 func (ec *eventsController) getEventsHandler(w http.ResponseWriter, r *http.Request) {
-	eventsDto := ec.EventsStore.Get(1)
+	vars := mux.Vars(r)
+	startFrom, err := strconv.Atoi(vars["startFrom"])
+	if err != nil {
+		http.Error(w, fmt.Sprintf("'%s' is not a valid numnber", vars["startFrom"]), http.StatusBadRequest)
+		return
+	}
+
+	eventsDto, err := ec.EventsStore.Get(startFrom)
+	if err != nil {
+		ec.log.Error(r, fmt.Sprintf("Unable to get events starting from %d.", startFrom), err)
+		http.Error(w, "Unable to process the request.", http.StatusInternalServerError) ///should have erroras codes
+		return
+	}
+
 	events := mapEvents(eventsDto)
 	links := newLinks()
 	eventsList := newEventsResponse(events, links, 1, 1, 1, 1)
@@ -35,7 +51,6 @@ func (ec *eventsController) getEventsHandler(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		ec.log.Error(r, "Unable to encode events response to JSON for subscribers.", err)
 		http.Error(w, "Unable to process the request.", http.StatusInternalServerError) ///should have erroras codes
-
 		return
 	}
 
