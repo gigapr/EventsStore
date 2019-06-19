@@ -7,19 +7,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type event struct {
-	SourceID string      `json:"sourceId"`
-	EventID  string      `json:"eventId"`
-	Type     string      `json:"type"`
-	Data     interface{} `json:"data"`
-	Metadata interface{} `json:"metadata"`
-}
-
-type savedEvent struct {
-	Sequence int `json:"sequence"`
-	event
-}
-
 type eventsController struct {
 	log             *HTTPRequestLogger
 	EventsStore     *EventsStore
@@ -34,6 +21,26 @@ func RegisterEventsControllerRoutes(eventStore *EventsStore, upgrader websocket.
 	es.log = NewHTTPRequestLogger()
 
 	http.HandleFunc("/event", es.saveEventHandler)
+	http.HandleFunc("/events", es.getEventsHandler)
+}
+
+//events?
+func (ec *eventsController) getEventsHandler(w http.ResponseWriter, r *http.Request) {
+
+	events := []event{}
+	links := newLinks()
+	eventsList := newEventsResponse(events, links, 1, 1, 1, 1)
+	json, err := json.Marshal(eventsList)
+	if err != nil {
+		ec.log.Error(r, "Unable to encode events response to JSON for subscribers.", err)
+		http.Error(w, "Unable to process the request.", http.StatusInternalServerError) ///should have erroras codes
+
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(json)
 }
 
 func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +105,7 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 	subscribers := ec.HandlersManager.GetChannels(evm.Type)
 
 	if subscribers != nil {
-		savedEvent := savedEvent{event: evm}
+		savedEvent := savedEventResponse{event: evm}
 		savedEvent.Sequence = id
 
 		event, err := json.Marshal(savedEvent)
