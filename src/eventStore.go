@@ -3,11 +3,25 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
 	_ "github.com/lib/pq"
 )
+
+const pageSize = 5
+
+type eventDto struct {
+	ID        int
+	SourceID  string
+	EventID   string
+	EventType string
+	EventData string
+	Metadata  string
+	Received  time.Time
+}
 
 //EventsStore is responsible for storing and retrieving events
 type EventsStore struct {
@@ -36,6 +50,30 @@ func NewEventsStore(host string, port int, username string, password string, dat
 		log: l,
 		db:  db,
 	}
+}
+
+func (es EventsStore) Get(sequenceNumber int) []eventDto {
+	events := []eventDto{}
+	sqlStatement := `SELECT Id, SourceId, EventId, EventType, EventData, Metadata, Received from events 
+					 WHERE id > $1
+					 LIMIT $2`
+
+	rows, err := es.db.Query(sqlStatement, sequenceNumber, pageSize)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var evn eventDto
+		if err := rows.Scan(&evn.ID, &evn.SourceID, &evn.EventID, &evn.EventType, &evn.EventData, &evn.Metadata, &evn.Received); err != nil {
+			log.Fatal(err)
+		}
+		events = append(events, evn)
+	}
+	if err := rows.Err(); err != nil {
+		log.Fatal(err)
+	}
+	return events
 }
 
 //Save an event to the database

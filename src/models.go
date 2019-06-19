@@ -1,5 +1,7 @@
 package main
 
+import "time"
+
 // HTTP/1.1 200 OK
 // Content-Type: application/hal+json
 // Content-Length: 784
@@ -53,7 +55,13 @@ type page struct {
 }
 
 type embedded struct {
-	EventsList []event `json:"eventsList"`
+	EventsList []savedEventResponse `json:"eventsList"`
+}
+
+type savedEventResponse struct {
+	Sequence int       `json:"sequence"`
+	Received time.Time `json:"received"`
+	event
 }
 
 type eventsResponse struct {
@@ -66,7 +74,7 @@ type Link struct {
 	Href string `json:"href"`
 }
 
-func newEventsResponse(events []event, links map[string]Link, size int, totalElements int, totalPages int, number int) eventsResponse {
+func newEventsResponse(events []savedEventResponse, links map[string]Link, size int, totalElements int, totalPages int, number int) eventsResponse {
 	return eventsResponse{
 		Embedded: embedded{
 			EventsList: events,
@@ -95,9 +103,4 @@ func newLinks() map[string]Link {
 		"last": Link{
 			Href: "The last page for this search"},
 	}
-}
-
-type savedEventResponse struct {
-	Sequence int `json:"sequence"`
-	event
 }

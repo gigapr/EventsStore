@@ -13,6 +13,7 @@ type eventsController struct {
 	HandlersManager *HandlersManager
 }
 
+//RegisterEventsControllerRoutes register all the EventsController routes
 func RegisterEventsControllerRoutes(eventStore *EventsStore, upgrader websocket.Upgrader, handlersManager *HandlersManager) {
 
 	es := new(eventsController)
@@ -26,8 +27,8 @@ func RegisterEventsControllerRoutes(eventStore *EventsStore, upgrader websocket.
 
 //events?
 func (ec *eventsController) getEventsHandler(w http.ResponseWriter, r *http.Request) {
-
-	events := []event{}
+	eventsDto := ec.EventsStore.Get(1)
+	events := mapEvents(eventsDto)
 	links := newLinks()
 	eventsList := newEventsResponse(events, links, 1, 1, 1, 1)
 	json, err := json.Marshal(eventsList)
@@ -68,7 +69,7 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	eventMetadataJSON, err := json.Marshal(evm.Data)
+	eventMetadataJSON, err := json.Marshal(evm.Metadata)
 	if err != nil {
 		message := "Unable to encode event metadata to JSON."
 		ec.log.Error(r, message, err)
