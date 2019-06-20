@@ -10,7 +10,6 @@ import (
 )
 
 type eventsController struct {
-	log             *HTTPRequestLogger
 	EventsStore     *EventsStore
 	HandlersManager *HandlersManager
 }
@@ -21,7 +20,6 @@ func InitialiseEventsController(router *mux.Router, eventStore *EventsStore, han
 	es := new(eventsController)
 	es.EventsStore = eventStore
 	es.HandlersManager = handlersManager
-	es.log = NewHTTPRequestLogger(log)
 
 	router.HandleFunc("/event", es.saveEventHandler)
 	router.HandleFunc("/events/{startFrom}", es.getEventsHandler)
@@ -32,15 +30,13 @@ func (ec *eventsController) getEventsHandler(w http.ResponseWriter, r *http.Requ
 	vars := mux.Vars(r)
 	startFrom, err := strconv.Atoi(vars["startFrom"])
 	if err != nil {
-		http.Error(w, fmt.Sprintf("'%s' is not a valid numnber", vars["startFrom"]), http.StatusBadRequest)
+		LogHttpError(w, r, fmt.Sprintf("'%s' is not a valid numnber", vars["startFrom"]), http.StatusBadRequest, err)
 		return
 	}
 
 	eventsDto, err := ec.EventsStore.Get(startFrom)
 	if err != nil {
-		message := fmt.Sprintf("Unable to get events starting from %d.", startFrom)
-		ec.log.Error(r, message, err)
-		http.Error(w, message, http.StatusInternalServerError)
+		LogHttpError(w, r, fmt.Sprintf("Unable to get events starting from %d.", startFrom), http.StatusInternalServerError, err)
 	}
 
 	events := mapEvents(eventsDto)
@@ -48,8 +44,7 @@ func (ec *eventsController) getEventsHandler(w http.ResponseWriter, r *http.Requ
 	eventsList := newEventsResponse(events, links, 1, 1, 1, 1)
 	json, err := json.Marshal(eventsList)
 	if err != nil {
-		ec.log.Error(r, "Unable to encode events response to JSON for subscribers.", err)
-		http.Error(w, "Unable to process the request.", http.StatusInternalServerError) ///should have erroras codes
+		LogHttpError(w, r, "Unable to encode events response to JSON for subscribers.", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -77,28 +72,20 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 	eventDataJSON, err := json.Marshal(evm.Data)
 
 	if err != nil {
-		message := "Unable to encode event data to JSON."
-		ec.log.Error(r, message, err)
-		http.Error(w, message, http.StatusInternalServerError)
+		LogHttpError(w, r, "Unable to encode event data to JSON.", http.StatusInternalServerError, err)
 		return
 	}
 
 	eventMetadataJSON, err := json.Marshal(evm.Metadata)
 	if err != nil {
-		message := "Unable to encode event metadata to JSON."
-		ec.log.Error(r, message, err)
-		http.Error(w, message, http.StatusInternalServerError)
-
+		LogHttpError(w, r, "Unable to encode event metadata to JSON.", http.StatusInternalServerError, err)
 		return
 	}
 
 	alreadyExist, err := ec.EventsStore.Exists(evm.SourceID, evm.EventID)
 
 	if err != nil {
-		message := "Unable to persist event."
-		ec.log.Error(r, message, err)
-		http.Error(w, message, http.StatusInternalServerError)
-
+		LogHttpError(w, r, "Unable to persist event.", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -110,10 +97,7 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 	id, err := ec.EventsStore.Save(evm.SourceID, evm.EventID, evm.Type, eventDataJSON, eventMetadataJSON)
 
 	if err != nil {
-		message := "Unable to persist event."
-		ec.log.Error(r, message, err)
-		http.Error(w, message, http.StatusInternalServerError)
-
+		LogHttpError(w, r, "Unable to persist event.", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -125,10 +109,7 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 
 		event, err := json.Marshal(savedEvent)
 		if err != nil {
-			message := "Unable to encode event to JSON for subscribers."
-			ec.log.Error(r, message, err)
-			http.Error(w, message, http.StatusInternalServerError)
-
+			LogHttpError(w, r, "Unable to encode event to JSON for subscribers.", http.StatusInternalServerError, err)
 			return
 		}
 

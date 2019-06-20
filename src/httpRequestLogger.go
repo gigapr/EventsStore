@@ -6,29 +6,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type HTTPRequestLogger struct {
-	*logrus.Logger
-}
-
-func NewHTTPRequestLogger(logger *logrus.Logger) *HTTPRequestLogger {
-	return &HTTPRequestLogger{
-		Logger: logger,
-	}
-}
-func (rl *HTTPRequestLogger) Error(r *http.Request, message string, err error) {
-	rl.decorate(r, message).Error(err)
-}
-
-func (rl *HTTPRequestLogger) Debug(r *http.Request, message string, err error) {
-	rl.decorate(r, message).Debug(err)
-}
-
-func (rl *HTTPRequestLogger) decorate(r *http.Request, message string) *logrus.Entry {
-	log := rl.WithFields(logrus.Fields{
+func LogHttpError(w http.ResponseWriter, r *http.Request, errorMessage string, httpStatusCode int, err error) {
+	log := log.WithFields(logrus.Fields{
 		"http.req.path":   r.URL.Path,
 		"http.req.method": r.Method,
-		"message":         message,
+		"message":         errorMessage,
 	})
 
-	return log
+	log.Error(r, errorMessage, err)
+
+	http.Error(w, errorMessage, httpStatusCode)
 }
