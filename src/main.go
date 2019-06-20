@@ -8,9 +8,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+var log = InititaliseLogger()
+
 func main() {
 
-	log := InititaliseLogger()
 	settings := InitialiseSettings()
 	eventsStore := NewEventsStore(settings.DatabaseHost, settings.DatabasePort, settings.DatabaseUsername, settings.DatabasePassword, settings.DatabaseName)
 	handlersManager := NewHandlersManager()

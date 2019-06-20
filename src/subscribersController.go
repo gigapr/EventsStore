@@ -19,7 +19,7 @@ func InitSubscribersController(router *mux.Router, eventStore *EventsStore, upgr
 	sc := new(subscribersController)
 	sc.Upgrader = upgrader
 	sc.HandlersManager = handlersManager
-	sc.log = NewHTTPRequestLogger()
+	sc.log = NewHTTPRequestLogger(log)
 
 	router.HandleFunc("/subscribe", sc.subscribe)
 	router.HandleFunc("/subscribers", sc.getSubscibers)

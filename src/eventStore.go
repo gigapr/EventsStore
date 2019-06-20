@@ -30,18 +30,16 @@ type EventsStore struct {
 //NewEventsStore creates an instance of the EventsStore
 func NewEventsStore(host string, port int, username string, password string, databaseName string) *EventsStore {
 
-	l := logrus.New()
-
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, username, password, databaseName)
 
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
-		l.WithFields(logrus.Fields{"message": "Unable to open connection to database."}).Fatal(err)
+		log.WithFields(logrus.Fields{"message": "Unable to open connection to database."}).Fatal(err)
 	}
 
 	err = db.Ping()
 	if err != nil {
-		l.WithFields(logrus.Fields{"message": "Failed to execute ping against database."}).Fatal(err)
+		log.WithFields(logrus.Fields{"message": "Failed to execute ping against database."}).Fatal(err)
 	}
 
 	return &EventsStore{

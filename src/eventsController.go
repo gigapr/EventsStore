@@ -21,7 +21,7 @@ func InitialiseEventsController(router *mux.Router, eventStore *EventsStore, han
 	es := new(eventsController)
 	es.EventsStore = eventStore
 	es.HandlersManager = handlersManager
-	es.log = NewHTTPRequestLogger()
+	es.log = NewHTTPRequestLogger(log)
 
 	router.HandleFunc("/event", es.saveEventHandler)
 	router.HandleFunc("/events/{startFrom}", es.getEventsHandler)
@@ -38,9 +38,9 @@ func (ec *eventsController) getEventsHandler(w http.ResponseWriter, r *http.Requ
 
 	eventsDto, err := ec.EventsStore.Get(startFrom)
 	if err != nil {
-		ec.log.Error(r, fmt.Sprintf("Unable to get events starting from %d.", startFrom), err)
-		http.Error(w, "Unable to process the request.", http.StatusInternalServerError) ///should have erroras codes
-		return
+		message := fmt.Sprintf("Unable to get events starting from %d.", startFrom)
+		ec.log.Error(r, message, err)
+		http.Error(w, message, http.StatusInternalServerError)
 	}
 
 	events := mapEvents(eventsDto)

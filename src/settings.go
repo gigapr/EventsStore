@@ -3,8 +3,6 @@ package main
 import (
 	"os"
 	"strconv"
-
-	"github.com/sirupsen/logrus"
 )
 
 //Settings type that holds application setttings
@@ -23,7 +21,6 @@ type Settings struct {
   [ port, databaseHost, databsePort, databaseUsername, databasePassword, databaseName ]
 */
 func InitialiseSettings() *Settings {
-	log := logrus.New()
 
 	settings := new(Settings)
 	settings.Port = getEnv("port", "4000")
