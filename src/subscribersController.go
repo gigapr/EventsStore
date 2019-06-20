@@ -14,7 +14,7 @@ type subscribersController struct {
 	HandlersManager *HandlersManager
 }
 
-func RegisterSubscribersControllerRoutes(router *mux.Router, eventStore *EventsStore, upgrader websocket.Upgrader, handlersManager *HandlersManager) {
+func InitSubscribersController(router *mux.Router, eventStore *EventsStore, upgrader websocket.Upgrader, handlersManager *HandlersManager) {
 
 	sc := new(subscribersController)
 	sc.Upgrader = upgrader

@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
 )
 
 type eventsController struct {
@@ -16,8 +15,8 @@ type eventsController struct {
 	HandlersManager *HandlersManager
 }
 
-//RegisterEventsControllerRoutes register all the EventsController routes
-func RegisterEventsControllerRoutes(router *mux.Router, eventStore *EventsStore, upgrader websocket.Upgrader, handlersManager *HandlersManager) {
+//InitialiseEventsController register all the EventsController routes
+func InitialiseEventsController(router *mux.Router, eventStore *EventsStore, handlersManager *HandlersManager) {
 
 	es := new(eventsController)
 	es.EventsStore = eventStore
