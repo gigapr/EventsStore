@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // HTTP/1.1 200 OK
 // Content-Type: application/hal+json
@@ -40,10 +43,10 @@ import "time"
 // ```
 
 type event struct {
-	SourceID string      `json:"sourceId"`
-	EventID  string      `json:"eventId"`
-	Type     string      `json:"type"`
-	Data     interface{} `json:"data"`
+	SourceID string      `json:"sourceId" validate:"required"`
+	EventID  string      `json:"eventId" validate:"required"`
+	Type     string      `json:"type" validate:"required"`
+	Data     interface{} `json:"data" validate:"required"`
 	Metadata interface{} `json:"metadata"`
 }
 
@@ -89,18 +92,30 @@ func newEventsResponse(events []savedEventResponse, links map[string]Link, size 
 	}
 }
 
-func newLinks() map[string]Link {
+func newLinks(startFrom int, totalNumberOfRecords int) map[string]Link {
 	return map[string]Link{
 		"self": Link{
-			Href: "https://genie.example.com/api/v3/jobs/425c4a6a-a069-4849-a66e-d08d6e8d1912",
+			Href: fmt.Sprintf("/events/%d", startFrom),
 		},
 		"first": Link{
-			Href: "The first page for this search"},
+			Href: "/events/1", //"The first page for this search"
+		},
 		"prev": Link{
-			Href: "The previous page for this search"},
+			Href: fmt.Sprintf("/events/%d", startFrom-pageSize-1), //"The previous page for this search"
+		},
 		"next": Link{
-			Href: "The next page for this search"},
+			Href: fmt.Sprintf("/events/%d", startFrom+pageSize-1), //"The next page for this search"
+		},
 		"last": Link{
-			Href: "The last page for this search"},
+			Href: fmt.Sprintf("/events/%d", startFrom+pageSize-1), //"The last page for this search"
+		},
 	}
+}
+
+func getNextPage(startFrom int) int {
+	return 1 //needs to be fixed
+}
+
+func getPreviousPage(current int) int {
+	return 1 //needs to be fixed
 }

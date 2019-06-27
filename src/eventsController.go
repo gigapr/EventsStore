@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 type eventsController struct {
@@ -40,7 +42,7 @@ func (ec *eventsController) getEventsHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	events := mapEvents(eventsDto)
-	links := newLinks()
+	links := newLinks(startFrom, 12)
 	eventsList := newEventsResponse(events, links, 1, 1, 1, 1)
 	json, err := json.Marshal(eventsList)
 	if err != nil {
@@ -63,6 +65,19 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 	var evm event
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&evm)
+	validate := validator.New()
+
+	err = validate.Struct(evm)
+	if err != nil {
+		var buffer bytes.Buffer
+
+		for _, err := range err.(validator.ValidationErrors) {
+			buffer.WriteString(err.Namespace() + " " + err.Tag())
+		}
+
+		http.Error(w, buffer.String(), http.StatusBadRequest)
+		return
+	}
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
