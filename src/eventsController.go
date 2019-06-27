@@ -24,7 +24,7 @@ func InitialiseEventsController(router *mux.Router, eventStore *EventsStore, han
 	es.HandlersManager = handlersManager
 
 	router.HandleFunc("/event", es.saveEventHandler)
-	router.HandleFunc("/events/{startFrom}", es.getEventsHandler)
+	router.HandleFunc("/events/{startFrom}/{eventType}", es.getEventsHandler)
 }
 
 //events?
@@ -32,18 +32,25 @@ func (ec *eventsController) getEventsHandler(w http.ResponseWriter, r *http.Requ
 	vars := mux.Vars(r)
 	startFrom, err := strconv.Atoi(vars["startFrom"])
 	if err != nil {
-		LogHttpError(w, r, fmt.Sprintf("'%s' is not a valid numnber", vars["startFrom"]), http.StatusBadRequest, err)
+		LogHttpError(w, r, fmt.Sprintf("'%s' is not a valid number", vars["startFrom"]), http.StatusBadRequest, err)
+		return
+	}
+	eventType := vars["eventType"]
+	eventsDto, err := ec.EventsStore.Get(startFrom, eventType)
+	if err != nil {
+		LogHttpError(w, r, fmt.Sprintf("Unable to get events starting from %d.", startFrom), http.StatusInternalServerError, err)
 		return
 	}
 
-	eventsDto, err := ec.EventsStore.Get(startFrom)
-	if err != nil {
-		LogHttpError(w, r, fmt.Sprintf("Unable to get events starting from %d.", startFrom), http.StatusInternalServerError, err)
+	events := mapEvents(eventsDto)
+
+	count := 0
+	if len(eventsDto) > 0 {
+		count = eventsDto[0].Count
 	}
 
-	events := mapEvents(eventsDto)
-	links := newLinks(startFrom, 12)
-	eventsList := newEventsResponse(events, links, 1, 1, 1, 1)
+	links := newLinks(startFrom, eventType, count)
+	eventsList := newEventsResponse(events, links, pageSize, count, 1, 1)
 	json, err := json.Marshal(eventsList)
 	if err != nil {
 		LogHttpError(w, r, "Unable to encode events response to JSON for subscribers.", http.StatusInternalServerError, err)

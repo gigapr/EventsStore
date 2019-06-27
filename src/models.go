@@ -92,30 +92,36 @@ func newEventsResponse(events []savedEventResponse, links map[string]Link, size 
 	}
 }
 
-func newLinks(startFrom int, totalNumberOfRecords int) map[string]Link {
-	return map[string]Link{
-		"self": Link{
-			Href: fmt.Sprintf("/events/%d", startFrom),
-		},
-		"first": Link{
-			Href: "/events/1", //"The first page for this search"
-		},
-		"prev": Link{
-			Href: fmt.Sprintf("/events/%d", startFrom-pageSize-1), //"The previous page for this search"
-		},
-		"next": Link{
-			Href: fmt.Sprintf("/events/%d", startFrom+pageSize-1), //"The next page for this search"
-		},
-		"last": Link{
-			Href: fmt.Sprintf("/events/%d", startFrom+pageSize-1), //"The last page for this search"
-		},
+func newLinks(startFrom int, eventType string, totalNumberOfRecords int) map[string]Link {
+	links := map[string]Link{}
+	template := "/events/%d/%s"
+	if startFrom > 1 {
+		links["first"] = Link{
+			Href: fmt.Sprintf(template, 1, eventType), //"The first page for this search"
+		}
 	}
-}
 
-func getNextPage(startFrom int) int {
-	return 1 //needs to be fixed
-}
+	if startFrom > 1 {
+		n := 1
+		if (startFrom - pageSize) > 1 {
+			n = startFrom - pageSize
+		}
+		links["prev"] = Link{
+			Href: fmt.Sprintf(template, n, eventType), //"The previous page for this search"
+		}
+	}
 
-func getPreviousPage(current int) int {
-	return 1 //needs to be fixed
+	if (startFrom + pageSize) <= totalNumberOfRecords {
+		links["next"] = Link{
+			Href: fmt.Sprintf(template, startFrom+pageSize, eventType), //"The next page for this search"
+		}
+	}
+
+	if (totalNumberOfRecords - pageSize) > startFrom {
+		links["last"] = Link{
+			Href: fmt.Sprintf(template, totalNumberOfRecords-pageSize, eventType), //"The last page for this search"
+		}
+	}
+
+	return links
 }

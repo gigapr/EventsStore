@@ -10,7 +10,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const pageSize = 5
+const pageSize = 2
 
 type eventDto struct {
 	ID        int
@@ -20,6 +20,7 @@ type eventDto struct {
 	EventData string
 	Metadata  string
 	Received  time.Time
+	Count     int
 }
 
 //EventsStore is responsible for storing and retrieving events
@@ -47,20 +48,25 @@ func NewEventsStore(host string, port int, username string, password string, dat
 	}
 }
 
-func (es EventsStore) Get(sequenceNumber int) ([]eventDto, error) {
+func (es EventsStore) Get(sequenceNumber int, eventType string) ([]eventDto, error) {
 	events := []eventDto{}
-	sqlStatement := `SELECT Id, SourceId, EventId, EventType, EventData, Metadata, Received from events 
-					 WHERE id > $1
-					 LIMIT $2`
+	sqlStatement := `WITH vars AS (
+							SELECT count(id) AS count FROM events WHERE LOWER(EventType) = LOWER($1)
+					 )
 
-	rows, err := es.db.Query(sqlStatement, sequenceNumber-1, pageSize)
+					 SELECT Id, SourceId, EventId, EventType, EventData, Metadata, Received, vars.count
+					 FROM events, vars
+					 WHERE LOWER(EventType) = LOWER($1) AND id > $2
+					 LIMIT $3`
+
+	rows, err := es.db.Query(sqlStatement, eventType, sequenceNumber-1, pageSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var evn eventDto
-		if err := rows.Scan(&evn.ID, &evn.SourceID, &evn.EventID, &evn.EventType, &evn.EventData, &evn.Metadata, &evn.Received); err != nil {
+		if err := rows.Scan(&evn.ID, &evn.SourceID, &evn.EventID, &evn.EventType, &evn.EventData, &evn.Metadata, &evn.Received, &evn.Count); err != nil {
 			return nil, err
 		}
 		events = append(events, evn)
