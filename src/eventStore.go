@@ -20,7 +20,12 @@ type eventDto struct {
 	EventData string
 	Metadata  string
 	Received  time.Time
-	Count     int
+}
+
+type eventsStats struct {
+	Min   int
+	Max   int
+	Count int
 }
 
 //EventsStore is responsible for storing and retrieving events
@@ -48,25 +53,52 @@ func NewEventsStore(host string, port int, username string, password string, dat
 	}
 }
 
-func (es EventsStore) Get(sequenceNumber int, eventType string) ([]eventDto, error) {
+func (es EventsStore) GetEventsStats(eventType string, sourceID string) (*eventsStats, error) {
+	sqlStatement := `select min(id), max(id), count(id)
+					 FROM events 
+				  	 WHERE LOWER(EventType) = LOWER($1)
+				  	 AND LOWER(SourceId) = LOWER($2)`
+
+	rows, err := es.db.Query(sqlStatement, eventType, sourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var count, min, max int
+
+	for rows.Next() {
+		if err := rows.Scan(&min, &max, &count); err != nil {
+			return nil, err
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return &eventsStats{
+		Min:   min,
+		Max:   max,
+		Count: count,
+	}, nil
+}
+
+func (es EventsStore) Get(sequenceNumber int, eventType string, sourceID string) ([]eventDto, error) {
 	events := []eventDto{}
-	sqlStatement := `WITH vars AS (
-							SELECT count(id) AS count FROM events WHERE LOWER(EventType) = LOWER($1)
-					 )
+	sqlStatement := `SELECT Id, SourceId, EventId, EventType, EventData, Metadata, Received
+					 FROM events
+					 WHERE LOWER(EventType) = LOWER($1) 
+					 AND LOWER(SourceId) = LOWER($2)
+					 AND id > $3
+					 LIMIT $4`
 
-					 SELECT Id, SourceId, EventId, EventType, EventData, Metadata, Received, vars.count
-					 FROM events, vars
-					 WHERE LOWER(EventType) = LOWER($1) AND id > $2
-					 LIMIT $3`
-
-	rows, err := es.db.Query(sqlStatement, eventType, sequenceNumber-1, pageSize)
+	rows, err := es.db.Query(sqlStatement, eventType, sourceID, sequenceNumber-1, pageSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var evn eventDto
-		if err := rows.Scan(&evn.ID, &evn.SourceID, &evn.EventID, &evn.EventType, &evn.EventData, &evn.Metadata, &evn.Received, &evn.Count); err != nil {
+		if err := rows.Scan(&evn.ID, &evn.SourceID, &evn.EventID, &evn.EventType, &evn.EventData, &evn.Metadata, &evn.Received); err != nil {
 			return nil, err
 		}
 		events = append(events, evn)

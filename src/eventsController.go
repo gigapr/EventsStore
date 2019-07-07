@@ -24,33 +24,52 @@ func InitialiseEventsController(router *mux.Router, eventStore *EventsStore, han
 	es.HandlersManager = handlersManager
 
 	router.HandleFunc("/event", es.saveEventHandler)
-	router.HandleFunc("/events/{startFrom}/{eventType}", es.getEventsHandler)
+	router.HandleFunc("/{sourceID}/events/{startFrom}/{eventType}", es.getEventsHandler)
 }
 
-//events?
 func (ec *eventsController) getEventsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
+	eventType := vars["eventType"]
+	sourceID := vars["sourceID"]
 	startFrom, err := strconv.Atoi(vars["startFrom"])
 	if err != nil {
 		LogHttpError(w, r, fmt.Sprintf("'%s' is not a valid number", vars["startFrom"]), http.StatusBadRequest, err)
 		return
 	}
-	eventType := vars["eventType"]
-	eventsDto, err := ec.EventsStore.Get(startFrom, eventType)
+
+	eventsStats, err := ec.EventsStore.GetEventsStats(eventType, sourceID)
 	if err != nil {
 		LogHttpError(w, r, fmt.Sprintf("Unable to get events starting from %d.", startFrom), http.StatusInternalServerError, err)
 		return
 	}
 
-	events := mapEvents(eventsDto)
-
-	count := 0
-	if len(eventsDto) > 0 {
-		count = eventsDto[0].Count
+	eventsList := eventsResponse{
+		Page: page{
+			Size:          pageSize,
+			TotalElements: eventsStats.Count,
+			TotalPages:    (eventsStats.Count + pageSize - 1) / pageSize,
+			// Number:        1,
+		},
 	}
 
-	links := newLinks(startFrom, eventType, count)
-	eventsList := newEventsResponse(events, links, pageSize, count, 1, 1)
+	if startFrom > eventsStats.Count {
+		w.WriteHeader(http.StatusNotFound)
+	} else {
+		eventsList.Links = newLinks(startFrom, eventType, sourceID, eventsStats.Min, eventsStats.Max, eventsStats.Count)
+
+		eventsDto, err := ec.EventsStore.Get(startFrom, eventType, sourceID)
+		if err != nil {
+			LogHttpError(w, r, fmt.Sprintf("Unable to get events starting from %d.", startFrom), http.StatusInternalServerError, err)
+			return
+		}
+
+		eventsList.Embedded = embedded{
+			EventsList: mapEvents(eventsDto),
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+
 	json, err := json.Marshal(eventsList)
 	if err != nil {
 		LogHttpError(w, r, "Unable to encode events response to JSON for subscribers.", http.StatusInternalServerError, err)
@@ -58,7 +77,6 @@ func (ec *eventsController) getEventsHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	w.Write(json)
 }
 
