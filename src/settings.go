@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 )
@@ -27,9 +28,10 @@ func InitialiseSettings() *Settings {
 	settings.Port = getEnv("port", "4000")
 	settings.DatabaseHost = getEnv("databaseHost", "localhost")
 
-	databasePort, err := strconv.Atoi(getEnv("databsePort", "5432"))
+	databasePortString := getEnv("databsePort", "5432")
+	databasePort, err := strconv.Atoi(databasePortString)
 	if err != nil {
-		log.Fatal(err)
+		logFatal(fmt.Sprintf("Unable to convert '%s' to int", databasePortString), err)
 	}
 
 	settings.DatabasePort = databasePort

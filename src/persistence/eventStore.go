@@ -2,7 +2,6 @@ package persistence //import "gigapr/eventsstore/persistence"
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -26,32 +25,8 @@ type eventsStats struct {
 
 //EventsStore is responsible for storing and retrieving events
 type EventsStore struct {
-	db       *sql.DB
-	pageSize int
-}
-
-//NewEventsStore creates an instance of the EventsStore
-func NewEventsStore(host string, port int, username string, password string, databaseName string, pageSize int) *EventsStore {
-
-	if pageSize < 1 {
-		// log.WithFields(logrus.Fields{"message": "pageSize should be greater than 0."}).Fatal(err)
-	}
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, username, password, databaseName)
-
-	db, err := sql.Open("postgres", psqlInfo)
-	if err != nil {
-		// log.WithFields(logrus.Fields{"message": "Unable to open connection to database."}).Fatal(err)
-	}
-
-	err = db.Ping()
-	if err != nil {
-		// log.WithFields(logrus.Fields{"message": "Failed to execute ping against database."}).Fatal(err)
-	}
-
-	return &EventsStore{
-		db:       db,
-		pageSize: pageSize,
-	}
+	Db       *sql.DB
+	PageSize int
 }
 
 func (es EventsStore) GetEventsStats(eventType string, sourceID string) (*eventsStats, error) {
@@ -60,7 +35,7 @@ func (es EventsStore) GetEventsStats(eventType string, sourceID string) (*events
 				  	 WHERE LOWER(EventType) = LOWER($1)
 				  	 AND LOWER(SourceId) = LOWER($2)`
 
-	rows, err := es.db.Query(sqlStatement, eventType, sourceID)
+	rows, err := es.Db.Query(sqlStatement, eventType, sourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +67,7 @@ func (es EventsStore) Get(sequenceNumber int, eventType string, sourceID string)
 					 AND id > $3
 					 LIMIT $4`
 
-	rows, err := es.db.Query(sqlStatement, eventType, sourceID, sequenceNumber-1, es.pageSize)
+	rows, err := es.Db.Query(sqlStatement, eventType, sourceID, sequenceNumber-1, es.PageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +92,7 @@ func (es EventsStore) Save(sourceID string, EventID string, eventType string, da
 					 VALUES 			($1, 	   $2, 		$3, 	   $4, 		  $5)
 					 RETURNING id`
 	id := 0
-	err := es.db.QueryRow(sqlStatement, sourceID, EventID, eventType, data, metadata).Scan(&id)
+	err := es.Db.QueryRow(sqlStatement, sourceID, EventID, eventType, data, metadata).Scan(&id)
 	if err != nil {
 		return -1, err
 	}
@@ -132,7 +107,7 @@ func (es EventsStore) Exists(sourceID string, EventID string) (bool, error) {
 					 WHERE SourceId = $1 AND EventId = $2
 					 fetch first 1 rows only`
 
-	rows, err := es.db.Query(sqlStatement, sourceID, EventID)
+	rows, err := es.Db.Query(sqlStatement, sourceID, EventID)
 	defer rows.Close()
 
 	if err != nil {
