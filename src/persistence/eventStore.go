@@ -1,18 +1,14 @@
-package main
+package persistence //import "gigapr/eventsstore/persistence"
 
 import (
 	"database/sql"
 	"fmt"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	_ "github.com/lib/pq"
 )
 
-const pageSize = 2
-
-type eventDto struct {
+type EventDto struct {
 	ID        int
 	SourceID  string
 	EventID   string
@@ -30,26 +26,31 @@ type eventsStats struct {
 
 //EventsStore is responsible for storing and retrieving events
 type EventsStore struct {
-	db *sql.DB
+	db       *sql.DB
+	pageSize int
 }
 
 //NewEventsStore creates an instance of the EventsStore
-func NewEventsStore(host string, port int, username string, password string, databaseName string) *EventsStore {
+func NewEventsStore(host string, port int, username string, password string, databaseName string, pageSize int) *EventsStore {
 
+	if pageSize < 1 {
+		// log.WithFields(logrus.Fields{"message": "pageSize should be greater than 0."}).Fatal(err)
+	}
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, username, password, databaseName)
 
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
-		log.WithFields(logrus.Fields{"message": "Unable to open connection to database."}).Fatal(err)
+		// log.WithFields(logrus.Fields{"message": "Unable to open connection to database."}).Fatal(err)
 	}
 
 	err = db.Ping()
 	if err != nil {
-		log.WithFields(logrus.Fields{"message": "Failed to execute ping against database."}).Fatal(err)
+		// log.WithFields(logrus.Fields{"message": "Failed to execute ping against database."}).Fatal(err)
 	}
 
 	return &EventsStore{
-		db: db,
+		db:       db,
+		pageSize: pageSize,
 	}
 }
 
@@ -82,8 +83,8 @@ func (es EventsStore) GetEventsStats(eventType string, sourceID string) (*events
 	}, nil
 }
 
-func (es EventsStore) Get(sequenceNumber int, eventType string, sourceID string) ([]eventDto, error) {
-	events := []eventDto{}
+func (es EventsStore) Get(sequenceNumber int, eventType string, sourceID string) ([]EventDto, error) {
+	events := []EventDto{}
 	sqlStatement := `SELECT Id, SourceId, EventId, EventType, EventData, Metadata, Received
 					 FROM events
 					 WHERE LOWER(EventType) = LOWER($1) 
@@ -91,13 +92,13 @@ func (es EventsStore) Get(sequenceNumber int, eventType string, sourceID string)
 					 AND id > $3
 					 LIMIT $4`
 
-	rows, err := es.db.Query(sqlStatement, eventType, sourceID, sequenceNumber-1, pageSize)
+	rows, err := es.db.Query(sqlStatement, eventType, sourceID, sequenceNumber-1, es.pageSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var evn eventDto
+		var evn EventDto
 		if err := rows.Scan(&evn.ID, &evn.SourceID, &evn.EventID, &evn.EventType, &evn.EventData, &evn.Metadata, &evn.Received); err != nil {
 			return nil, err
 		}

@@ -1,4 +1,4 @@
-package main
+package websocket //import "gigapr/eventsstore/websocket"
 
 import "testing"
 

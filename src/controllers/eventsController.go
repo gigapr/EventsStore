@@ -1,27 +1,36 @@
-package main
+package controllers //import "gigapr/eventsstore/controllers"
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"gigapr/eventsstore/mappers"
+	"gigapr/eventsstore/persistence"
+	"gigapr/eventsstore/viewModels"
+	"gigapr/eventsstore/websocket"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/go-playground/validator.v9"
 )
 
 type eventsController struct {
-	EventsStore     *EventsStore
-	HandlersManager *HandlersManager
+	EventsStore     *persistence.EventsStore
+	HandlersManager *websocket.HandlersManager
+	pageSize        int
+	log             *logrus.Logger
 }
 
 //InitialiseEventsController register all the EventsController routes
-func InitialiseEventsController(router *mux.Router, eventStore *EventsStore, handlersManager *HandlersManager) {
+func InitialiseEventsController(router *mux.Router, eventStore *persistence.EventsStore, handlersManager *websocket.HandlersManager, pageSize int, log *logrus.Logger) {
 
 	es := new(eventsController)
 	es.EventsStore = eventStore
 	es.HandlersManager = handlersManager
+	es.log = log
+	es.pageSize = pageSize
 
 	router.HandleFunc("/event", es.saveEventHandler)
 	router.HandleFunc("/{sourceID}/events/{startFrom}/{eventType}", es.getEventsHandler)
@@ -34,21 +43,21 @@ func (ec *eventsController) getEventsHandler(w http.ResponseWriter, r *http.Requ
 	sourceID := vars["sourceID"]
 	startFrom, err := strconv.Atoi(vars["startFrom"])
 	if err != nil {
-		LogHttpError(w, r, fmt.Sprintf("'%s' is not a valid number", vars["startFrom"]), http.StatusBadRequest, err)
+		ec.logHttpError(w, r, fmt.Sprintf("'%s' is not a valid number", vars["startFrom"]), http.StatusBadRequest, err)
 		return
 	}
 
 	eventsStats, err := ec.EventsStore.GetEventsStats(eventType, sourceID)
 	if err != nil {
-		LogHttpError(w, r, fmt.Sprintf("Unable to get events starting from %d.", startFrom), http.StatusInternalServerError, err)
+		ec.logHttpError(w, r, fmt.Sprintf("Unable to get events starting from %d.", startFrom), http.StatusInternalServerError, err)
 		return
 	}
 
-	eventsList := eventsResponse{
-		Page: page{
-			Size:          pageSize,
+	eventsList := viewModels.EventsResponse{
+		Page: viewModels.Page{
+			Size:          ec.pageSize,
 			TotalElements: eventsStats.Count,
-			TotalPages:    (eventsStats.Count + pageSize - 1) / pageSize,
+			TotalPages:    (eventsStats.Count + ec.pageSize - 1) / ec.pageSize,
 			// Number:        1,
 		},
 	}
@@ -56,23 +65,23 @@ func (ec *eventsController) getEventsHandler(w http.ResponseWriter, r *http.Requ
 	if startFrom > eventsStats.Count {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
-		eventsList.Links = newLinks(startFrom, eventType, sourceID, eventsStats.Min, eventsStats.Max, eventsStats.Count)
+		eventsList.Links = viewModels.NewLinks(startFrom, eventType, sourceID, eventsStats.Min, eventsStats.Max, eventsStats.Count, ec.pageSize)
 
 		eventsDto, err := ec.EventsStore.Get(startFrom, eventType, sourceID)
 		if err != nil {
-			LogHttpError(w, r, fmt.Sprintf("Unable to get events starting from %d.", startFrom), http.StatusInternalServerError, err)
+			ec.logHttpError(w, r, fmt.Sprintf("Unable to get events starting from %d.", startFrom), http.StatusInternalServerError, err)
 			return
 		}
 
-		eventsList.Embedded = embedded{
-			EventsList: mapEvents(eventsDto),
+		eventsList.Embedded = viewModels.Embedded{
+			EventsList: mappers.MapEvents(eventsDto),
 		}
 		w.WriteHeader(http.StatusOK)
 	}
 
 	json, err := json.Marshal(eventsList)
 	if err != nil {
-		LogHttpError(w, r, "Unable to encode events response to JSON for subscribers.", http.StatusInternalServerError, err)
+		ec.logHttpError(w, r, "Unable to encode events response to JSON for subscribers.", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -87,7 +96,7 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var evm event
+	var evm viewModels.Event
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&evm)
 	validate := validator.New()
@@ -112,20 +121,20 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 	eventDataJSON, err := json.Marshal(evm.Data)
 
 	if err != nil {
-		LogHttpError(w, r, "Unable to encode event data to JSON.", http.StatusInternalServerError, err)
+		ec.logHttpError(w, r, "Unable to encode event data to JSON.", http.StatusInternalServerError, err)
 		return
 	}
 
 	eventMetadataJSON, err := json.Marshal(evm.Metadata)
 	if err != nil {
-		LogHttpError(w, r, "Unable to encode event metadata to JSON.", http.StatusInternalServerError, err)
+		ec.logHttpError(w, r, "Unable to encode event metadata to JSON.", http.StatusInternalServerError, err)
 		return
 	}
 
 	alreadyExist, err := ec.EventsStore.Exists(evm.SourceID, evm.EventID)
 
 	if err != nil {
-		LogHttpError(w, r, "Unable to persist event.", http.StatusInternalServerError, err)
+		ec.logHttpError(w, r, "Unable to persist event.", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -137,19 +146,19 @@ func (ec *eventsController) saveEventHandler(w http.ResponseWriter, r *http.Requ
 	id, err := ec.EventsStore.Save(evm.SourceID, evm.EventID, evm.Type, eventDataJSON, eventMetadataJSON)
 
 	if err != nil {
-		LogHttpError(w, r, "Unable to persist event.", http.StatusInternalServerError, err)
+		ec.logHttpError(w, r, "Unable to persist event.", http.StatusInternalServerError, err)
 		return
 	}
 
 	subscribers := ec.HandlersManager.GetChannels(evm.Type)
 
 	if subscribers != nil {
-		savedEvent := savedEventResponse{event: evm}
+		savedEvent := viewModels.SavedEventResponse{Event: evm}
 		savedEvent.Sequence = id
 
 		event, err := json.Marshal(savedEvent)
 		if err != nil {
-			LogHttpError(w, r, "Unable to encode event to JSON for subscribers.", http.StatusInternalServerError, err)
+			ec.logHttpError(w, r, "Unable to encode event to JSON for subscribers.", http.StatusInternalServerError, err)
 			return
 		}
 
@@ -166,4 +175,16 @@ func (ec *eventsController) dispatchToSubscribers(response []byte, handlers []ch
 			channel <- response
 		}
 	}(handlers)
+}
+
+func (ec *eventsController) logHttpError(w http.ResponseWriter, r *http.Request, errorMessage string, httpStatusCode int, err error) {
+	log := ec.log.WithFields(logrus.Fields{
+		"http.req.path":   r.URL.Path,
+		"http.req.method": r.Method,
+		"message":         errorMessage,
+	})
+
+	log.Error(r, errorMessage, err)
+
+	http.Error(w, errorMessage, httpStatusCode)
 }

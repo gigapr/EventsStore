@@ -1,8 +1,4 @@
-package main
-
-import (
-	"fmt"
-)
+package websocket //import "gigapr/eventsstore/websocket"
 
 //HandlersManager is responsible for managing clients connections
 type HandlersManager struct {
@@ -36,10 +32,10 @@ func (hm HandlersManager) Unsubscribe(topic string, channel chan []byte) {
 	for i, other := range hm.handlers[topic] {
 		if other == channel {
 			hm.handlers[topic] = append(hm.handlers[topic][:i], hm.handlers[topic][i+1:]...)
-			log.Debug("Channel unregistered", channel)
+			// log.Debug("Channel unregistered", channel)
 			if len(hm.handlers[topic]) == 0 {
 				delete(hm.handlers, topic)
-				log.Debug(fmt.Sprintf("Removed handler for topic '%s'", topic))
+				// log.Debug(fmt.Sprintf("Removed handler for topic '%s'", topic))
 			}
 			break
 		}

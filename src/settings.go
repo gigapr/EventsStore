@@ -13,6 +13,7 @@ type Settings struct {
 	DatabaseUsername string
 	DatabasePassword string
 	DatabaseName     string
+	PageSize         int
 }
 
 /*InitialiseSettings initialise a new Settings.
@@ -35,6 +36,7 @@ func InitialiseSettings() *Settings {
 	settings.DatabaseUsername = getEnv("databaseUsername", "postgressuperuser")
 	settings.DatabasePassword = getEnv("databasePassword", "mysecretpassword")
 	settings.DatabaseName = getEnv("databaseName", "eventsStore")
+	settings.PageSize = 2
 
 	return settings
 }
