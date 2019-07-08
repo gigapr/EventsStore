@@ -14,12 +14,12 @@ RUN xz -d -c /usr/local/upx-3.94-amd64_linux.tar.xz | \
     chmod a+x /bin/upx
 
 # setup the working directory
-WORKDIR /go/src/eventsstore/src
+WORKDIR /eventsStore
 
 # add source code
 ADD src .
 
-RUN go get -v
+# RUN go get -v
 
 RUN ls .
 
@@ -40,7 +40,7 @@ FROM alpine:latest
 WORKDIR /root
 
 # copy the binary and templates from builder
-COPY --from=builder /go/src/eventsstore/src/main .
+COPY --from=builder /eventsStore/main .
 
 # run the binary
 CMD ["./main"]

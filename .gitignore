@@ -13,4 +13,7 @@
 
 */vendor/*
 
+.DS_Store
+.vscode/
+
 src/EventsStore

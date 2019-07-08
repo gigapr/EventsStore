@@ -1,42 +1,32 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
-	"os"
-	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sirupsen/logrus"
 )
+
+var log = InititaliseLogger()
 
 func main() {
 
-	log := logrus.New()
-	log.Level = logrus.DebugLevel
-	log.Formatter = &logrus.JSONFormatter{
-		FieldMap: logrus.FieldMap{
-			logrus.FieldKeyTime:  "timestamp",
-			logrus.FieldKeyLevel: "severity",
-			logrus.FieldKeyMsg:   "message",
-		},
-		TimestampFormat: time.RFC3339Nano,
-	}
-	log.Out = os.Stdout
-
 	settings := InitialiseSettings()
-	eventsStore := NewEventsStore(settings.DatabaseHost, settings.DatabasePort, settings.DatabaseUsername, settings.DatabasePassword, settings.DatabaseName)
+	eventsStore := NewEventsStore(settings.DatabaseHost, settings.DatabasePort, settings.DatabaseUsername, settings.DatabasePassword, settings.DatabaseName, settings.PageSize)
 	handlersManager := NewHandlersManager()
 	upgrader := websocket.Upgrader{}
+	router := mux.NewRouter()
 
-	RegisterEventsControllerRoutes(eventsStore, upgrader, handlersManager)
-	RegisterSubscribersControllerRoutes(eventsStore, upgrader, handlersManager)
+	InitialiseEventsController(router, eventsStore, handlersManager, settings.PageSize, log)
+	InitSubscribersController(router, eventsStore, upgrader, handlersManager, log)
 
 	http.Handle("/metrics", promhttp.Handler())
 
 	listenAddr := "0.0.0.0:" + settings.Port
 
-	log.Println("Server is ready to handle requests at", listenAddr)
+	log.Println("Starting server at", listenAddr)
 
-	log.Fatal(http.ListenAndServe(listenAddr, nil))
+	logFatal(fmt.Sprintf("Unable to start server at '%s'", listenAddr), http.ListenAndServe(listenAddr, router))
 }

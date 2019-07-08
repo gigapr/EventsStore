@@ -1,10 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strconv"
-
-	"github.com/sirupsen/logrus"
 )
 
 //Settings type that holds application setttings
@@ -15,6 +14,7 @@ type Settings struct {
 	DatabaseUsername string
 	DatabasePassword string
 	DatabaseName     string
+	PageSize         int
 }
 
 /*InitialiseSettings initialise a new Settings.
@@ -23,21 +23,22 @@ type Settings struct {
   [ port, databaseHost, databsePort, databaseUsername, databasePassword, databaseName ]
 */
 func InitialiseSettings() *Settings {
-	log := logrus.New()
 
 	settings := new(Settings)
 	settings.Port = getEnv("port", "4000")
 	settings.DatabaseHost = getEnv("databaseHost", "localhost")
 
-	databasePort, err := strconv.Atoi(getEnv("databsePort", "5432"))
+	databasePortString := getEnv("databsePort", "5432")
+	databasePort, err := strconv.Atoi(databasePortString)
 	if err != nil {
-		log.Fatal(err)
+		logFatal(fmt.Sprintf("Unable to convert '%s' to int", databasePortString), err)
 	}
 
 	settings.DatabasePort = databasePort
 	settings.DatabaseUsername = getEnv("databaseUsername", "postgressuperuser")
 	settings.DatabasePassword = getEnv("databasePassword", "mysecretpassword")
 	settings.DatabaseName = getEnv("databaseName", "eventsStore")
+	settings.PageSize = 2
 
 	return settings
 }
