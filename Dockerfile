@@ -1,4 +1,4 @@
-FROM golang:1.12.7 as builder
+FROM golang:1.15.2 as builder
 
 EXPOSE 4000
 
